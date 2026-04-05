@@ -51,11 +51,11 @@ pip install pyarmor pyinstaller
 pyarmor gen -O obf_dist interception_runner.py
 ```
 
-3. 打包为单文件 `exe`：
+3. 打包为单文件 `exe`（内置 `interception.dll`）：
 ```bash
-pyinstaller --onefile --name interception_runner obf_dist\interception_runner.py
+pyinstaller --onefile --name interception_runner --add-binary "interception.dll;." obf_dist\interception_runner.py
 ```
 
 4. 产物位置：
 - 可执行文件：`dist\interception_runner.exe`
-- 运行时请确保 `config_interception.yaml` 与 `interception.dll` 在可访问路径（同目录最简单）。
+- 运行时只需确保 `config_interception.yaml` 可访问；`interception.dll` 已内置到 exe。

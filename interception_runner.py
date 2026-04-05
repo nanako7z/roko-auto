@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import ctypes
 import random
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -158,6 +159,36 @@ def load_config(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(f)
 
 
+def resolve_dll_path(dll_path: str, config_path: Path) -> str:
+    dll_name = Path(dll_path).name
+    candidates: List[Path] = []
+
+    # PyInstaller onefile extracts bundled binaries to _MEIPASS.
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        candidates.append(Path(meipass) / dll_name)
+
+    raw = Path(dll_path)
+    if raw.is_absolute():
+        candidates.append(raw)
+    else:
+        candidates.extend(
+            [
+                config_path.parent / raw,
+                Path(__file__).resolve().parent / raw,
+                Path(sys.executable).resolve().parent / raw,
+                raw,
+            ]
+        )
+
+    for path in candidates:
+        if path.exists():
+            return str(path)
+
+    # Fallback to original value so WinDLL can still try PATH lookup.
+    return dll_path
+
+
 def validate_schedule(data: Dict[str, Any]) -> Schedule:
     raw = data.get("schedule", {})
     interval = float(raw.get("interval_sec", 0))
@@ -254,12 +285,14 @@ def main() -> None:
         raise ValueError("options.pause_between_cycles_sec must be >= 0")
 
     driver = str(cfg.get("driver", {}).get("dll_path", "interception.dll"))
+    resolved_driver = resolve_dll_path(driver, config_path)
 
     if schedule.start_delay_sec > 0:
         print(f"[INFO] Starting in {schedule.start_delay_sec:.2f}s...")
         time.sleep(schedule.start_delay_sec)
 
-    kbd = InterceptionKeyboard(dll_path=driver)
+    print(f"[INFO] Using driver DLL: {resolved_driver}")
+    kbd = InterceptionKeyboard(dll_path=resolved_driver)
     cycle = 0
 
     try:
