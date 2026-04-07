@@ -1,0 +1,80 @@
+# Interception 驱动配置（接近真实设备输入）
+
+# driver:
+#   # 可写绝对路径，例如: C:\\tools\\interception\\interception.dll
+#   # 也可仅写文件名（需确保在当前目录或系统 PATH 中）
+#   dll_path: interception.dll
+
+schedule:
+  # 基础执行周期（秒），必填
+  interval_sec: 20
+  # 每个周期的随机浮动范围（±秒），默认 0
+  jitter_sec: 5
+  # 启动后延迟多少秒再开始第一轮执行，默认 0
+  start_delay_sec: 3
+
+# options:
+#   # 按键按下后保持时长（秒），默认 0.03
+#   default_hold_sec: 0.03
+#   # 每轮执行完成后额外暂停时长（秒），默认 0
+#   pause_between_cycles_sec: 0
+#   # mouse_move 未单独指定 duration 时的默认耗时（秒），默认 0.8
+#   mouse_move_default_duration_sec: 0.8
+#   # mouse_move 未单独指定 wobble 时的默认弯曲系数，默认 0.2（更接近人工）
+#   mouse_move_default_wobble: 0.2
+
+commands:
+  # 按顺序执行的命令列表。
+
+  # ── 键盘 ──────────────────────────────────────────────────
+
+  # 单键，hold_sec 可选（默认同 default_hold_sec）
+  - type: key
+    key: tab
+    # hold_sec: 0.05
+
+  # 等待
+  - type: wait
+    sec: 2
+
+  # 单键（数字键需加引号）
+  - type: key
+    key: "2"
+
+  # 组合键，所有键同时按下后按逆序抬起
+  # - type: hotkey
+  #   keys: [ctrl, shift, esc]
+  #   hold_sec: 0.05    # 可选
+
+  # 支持的按键名：a-z、0-9、tab、enter、esc、space、backspace、
+  #               up、down、left、right、ctrl、shift、alt
+
+  # ── 鼠标 ──────────────────────────────────────────────────
+
+  # 鼠标点击，button: left / right / middle
+  # - type: mouse_click
+  #   button: left
+  #   hold_sec: 0.05    # 可选
+
+  # 相对移动（相对当前光标位置，正数向右/向下，负数向左/向上）
+  # - type: mouse_move
+  #   x: 100
+  #   y: -50
+
+  # 绝对移动（瞬移到屏幕像素坐标，左上角为原点）
+  # - type: mouse_move
+  #   x: 960
+  #   y: 540
+  #   absolute: true
+
+  # 人工模拟移动（贝塞尔曲线 + 缓入缓出，仅支持绝对坐标）
+  # - type: mouse_move
+  #   x: 960
+  #   y: 540
+  #   absolute: true
+  #   duration: 0.8    # 可选，移动耗时（秒）；默认用 options.mouse_move_default_duration_sec
+  #   wobble: 0.2      # 可选，曲线弯曲程度；默认用 options.mouse_move_default_wobble
+
+  # 滚轮，正数向上，负数向下，单位：格
+  # - type: mouse_scroll
+  #   amount: 3
