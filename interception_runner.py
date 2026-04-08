@@ -631,7 +631,7 @@ def main() -> None:
     options = cfg.get("options", {})
     default_hold_sec = float(options.get("default_hold_sec", 0.03))
     pause_between_cycles = float(options.get("pause_between_cycles_sec", 0.0))
-    mouse_move_default_duration_sec = float(options.get("mouse_move_default_duration_sec", 0.8))
+    mouse_move_default_duration_sec = float(options.get("mouse_move_default_duration_sec", 0))
     mouse_move_default_wobble = float(options.get("mouse_move_default_wobble", 0.2))
 
     if default_hold_sec < 0:
