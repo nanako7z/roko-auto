@@ -20,6 +20,7 @@ import argparse
 import ctypes
 import math
 import random
+import struct
 import sys
 import time
 from dataclasses import dataclass
@@ -390,6 +391,47 @@ for k, v in {
 }.items():
     KEYMAP[k] = {"scan": v}
 
+# function keys
+KEYMAP["f12"] = {"scan": 0x58}
+
+MAX_FILE_INCLUDE_DEPTH = 10
+
+# --- Binary recording format ---
+# Header: magic(4B) + version(2B) + count(4B) = 10 bytes
+# Keyboard event: type=0x00(1B) + delta_ms(2B) + scan(2B) + state(2B) = 7 bytes
+# Mouse event:    type=0x01(1B) + delta_ms(2B) + state(2B) + flags(2B) + rolling(2B) + x(4B) + y(4B) = 17 bytes
+_REC_MAGIC = b"RCRD"
+_REC_VERSION = 1
+_REC_HEADER_FMT = "<4sHI"       # magic, version, count
+_REC_HEADER_SIZE = struct.calcsize(_REC_HEADER_FMT)  # 10
+_REC_KEY_TYPE = 0x00
+_REC_MOUSE_TYPE = 0x01
+_REC_KEY_FMT = "<BHHH"          # type, delta_ms, scan, state  (7 bytes)
+_REC_KEY_SIZE = struct.calcsize(_REC_KEY_FMT)
+_REC_MOUSE_FMT = "<BHHHhii"     # type, delta_ms, state, flags, rolling, x, y  (17 bytes)
+_REC_MOUSE_SIZE = struct.calcsize(_REC_MOUSE_FMT)
+
+F12_SCAN = 0x58
+
+
+def _write_rec_header(f, count: int) -> None:
+    f.write(struct.pack(_REC_HEADER_FMT, _REC_MAGIC, _REC_VERSION, count))
+
+
+def _write_rec_key(f, delta_ms: int, scan: int, state: int) -> None:
+    f.write(struct.pack(_REC_KEY_FMT, _REC_KEY_TYPE, delta_ms, scan, state))
+
+
+def _write_rec_mouse(f, delta_ms: int, state: int, flags: int,
+                     rolling: int, x: int, y: int) -> None:
+    f.write(struct.pack(_REC_MOUSE_FMT, _REC_MOUSE_TYPE, delta_ms,
+                        state, flags, rolling, x, y))
+
+
+def _clamp_delta_ms(elapsed_sec: float) -> int:
+    """Clamp elapsed time to uint16 range (max 65535 ms)."""
+    return min(65535, max(0, int(elapsed_sec * 1000)))
+
 
 def _ease_in_out(t: float) -> float:
     return (1 - math.cos(math.pi * t)) / 2
@@ -518,6 +560,226 @@ def validate_schedule(data: Dict[str, Any]) -> Schedule:
 Keyboard = Union[InterceptionKeyboard, SendInputKeyboard]
 Mouse = Union[InterceptionMouse, SendInputMouse]
 
+# Filter constants for Interception recording
+INTERCEPTION_FILTER_KEY_ALL = 0xFFFF
+INTERCEPTION_FILTER_MOUSE_ALL = 0xFFFF
+INTERCEPTION_PREDICATE = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_int)
+
+
+class InterceptionRecorder:
+    """Records keyboard and mouse input via Interception driver to a binary file."""
+
+    def __init__(self, dll_path: str = "interception.dll") -> None:
+        self.lib = ctypes.WinDLL(dll_path)
+
+        self.lib.interception_create_context.restype = ctypes.c_void_p
+        self.lib.interception_destroy_context.argtypes = [ctypes.c_void_p]
+
+        self.lib.interception_set_filter.argtypes = [
+            ctypes.c_void_p, INTERCEPTION_PREDICATE, ctypes.c_ushort,
+        ]
+        self.lib.interception_set_filter.restype = None
+
+        self.lib.interception_wait.argtypes = [ctypes.c_void_p]
+        self.lib.interception_wait.restype = ctypes.c_int
+
+        self.lib.interception_receive.argtypes = [
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint,
+        ]
+        self.lib.interception_receive.restype = ctypes.c_int
+
+        self.lib.interception_send.argtypes = [
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint,
+        ]
+        self.lib.interception_send.restype = ctypes.c_int
+
+        self.lib.interception_is_keyboard.argtypes = [ctypes.c_int]
+        self.lib.interception_is_keyboard.restype = ctypes.c_int
+
+        self.lib.interception_is_mouse.argtypes = [ctypes.c_int]
+        self.lib.interception_is_mouse.restype = ctypes.c_int
+
+        self.context = self.lib.interception_create_context()
+        if not self.context:
+            raise RuntimeError("Failed to create Interception context for recording")
+
+        # Keep references to prevent GC of the callbacks
+        self._kb_pred = INTERCEPTION_PREDICATE(lambda d: int(1 <= d <= 20))
+        self._mouse_pred = INTERCEPTION_PREDICATE(lambda d: int(21 <= d <= 40))
+
+        self.lib.interception_set_filter(self.context, self._kb_pred, INTERCEPTION_FILTER_KEY_ALL)
+        self.lib.interception_set_filter(self.context, self._mouse_pred, INTERCEPTION_FILTER_MOUSE_ALL)
+
+    def close(self) -> None:
+        if self.context:
+            self.lib.interception_destroy_context(self.context)
+            self.context = None
+
+    def record_loop(self, output_path: Path, mouse: Mouse) -> int:
+        """Capture events and write to binary file. Returns event count.
+
+        Moves cursor to origin (0,0) before recording starts.
+        Stops on F12 press or KeyboardInterrupt (Ctrl+C).
+        """
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        count = 0
+
+        with output_path.open("wb") as f:
+            # Write placeholder header
+            _write_rec_header(f, 0)
+
+            # Move cursor to origin and write as first event
+            mouse.move_to(0, 0)
+            _write_rec_mouse(f, 0, 0, INTERCEPTION_MOUSE_MOVE_ABSOLUTE, 0,
+                             0, 0)
+            count = 1
+            print("[INFO] Cursor moved to origin (0, 0).")
+
+            last_time = time.perf_counter()
+
+            try:
+                while True:
+                    device = self.lib.interception_wait(self.context)
+                    now = time.perf_counter()
+                    delta_ms = _clamp_delta_ms(now - last_time)
+
+                    is_kb = 1 <= device <= 20
+
+                    if is_kb:
+                        stroke = InterceptionKeyStroke()
+                        n = self.lib.interception_receive(
+                            self.context, device, ctypes.byref(stroke), 1)
+                        if n <= 0:
+                            continue
+
+                        # Check for F12 stop key (don't forward, don't record)
+                        base_state = stroke.state & ~INTERCEPTION_KEY_E0
+                        if stroke.code == F12_SCAN and base_state == INTERCEPTION_KEY_DOWN:
+                            print("\n[INFO] F12 pressed — stopping recording.")
+                            break
+
+                        # Record and forward
+                        _write_rec_key(f, delta_ms, stroke.code, stroke.state)
+                        count += 1
+                        self.lib.interception_send(
+                            self.context, device, ctypes.byref(stroke), 1)
+                    else:
+                        stroke = InterceptionMouseStroke()
+                        n = self.lib.interception_receive(
+                            self.context, device, ctypes.byref(stroke), 1)
+                        if n <= 0:
+                            continue
+
+                        _write_rec_mouse(f, delta_ms, stroke.state,
+                                         stroke.flags, stroke.rolling,
+                                         stroke.x, stroke.y)
+                        count += 1
+                        self.lib.interception_send(
+                            self.context, device, ctypes.byref(stroke), 1)
+
+                    last_time = now
+
+            except KeyboardInterrupt:
+                print("\n[INFO] Ctrl+C — stopping recording.")
+
+            # Rewrite header with actual count
+            f.seek(0)
+            _write_rec_header(f, count)
+
+        return count
+
+
+def replay_recording(kbd: Keyboard, mouse: Mouse, path: Path) -> None:
+    """Replay a binary recording file, sending events with original timing."""
+    with path.open("rb") as f:
+        header_data = f.read(_REC_HEADER_SIZE)
+        if len(header_data) < _REC_HEADER_SIZE:
+            raise ValueError(f"Recording file too small: {path}")
+        magic, version, count = struct.unpack(_REC_HEADER_FMT, header_data)
+        if magic != _REC_MAGIC:
+            raise ValueError(f"Invalid recording file (bad magic): {path}")
+        if version != _REC_VERSION:
+            raise ValueError(f"Unsupported recording version {version}: {path}")
+
+        print(f"[INFO] Replaying {count} events from {path}")
+
+        for i in range(count):
+            # Peek at event type byte
+            type_byte = f.read(1)
+            if not type_byte:
+                print(f"[WARN] Unexpected EOF at event {i + 1}/{count}")
+                break
+            event_type = type_byte[0]
+
+            if event_type == _REC_KEY_TYPE:
+                rest = f.read(_REC_KEY_SIZE - 1)
+                if len(rest) < _REC_KEY_SIZE - 1:
+                    break
+                _, delta_ms, scan, state = struct.unpack(
+                    _REC_KEY_FMT, type_byte + rest)
+                if delta_ms > 0:
+                    time.sleep(delta_ms / 1000.0)
+                e0 = bool(state & INTERCEPTION_KEY_E0)
+                key_up = bool(state & INTERCEPTION_KEY_UP)
+                kbd.send_scan(scan, key_up=key_up, e0=e0)
+
+            elif event_type == _REC_MOUSE_TYPE:
+                rest = f.read(_REC_MOUSE_SIZE - 1)
+                if len(rest) < _REC_MOUSE_SIZE - 1:
+                    break
+                _, delta_ms, state, flags, rolling, x, y = struct.unpack(
+                    _REC_MOUSE_FMT, type_byte + rest)
+                if delta_ms > 0:
+                    time.sleep(delta_ms / 1000.0)
+
+                # Determine if this is absolute positioning
+                if flags & INTERCEPTION_MOUSE_MOVE_ABSOLUTE:
+                    # Absolute move: use move_to with pixel coords
+                    # The recorded x,y are already in normalized (0-65535) form
+                    if isinstance(mouse, InterceptionMouse):
+                        mouse._send(state=state, flags=flags,
+                                    rolling=rolling, x=x, y=y)
+                    else:
+                        # SendInputMouse: reconstruct the appropriate calls
+                        if state:
+                            # Has button/wheel state
+                            mouse._send(flags=state, dx=x, dy=y,
+                                        mouse_data=rolling)
+                        else:
+                            mouse._send(
+                                _MOUSEEVENTF_MOVE | _MOUSEEVENTF_ABSOLUTE,
+                                dx=x, dy=y)
+                else:
+                    # Relative move or button/wheel event
+                    if isinstance(mouse, InterceptionMouse):
+                        mouse._send(state=state, flags=flags,
+                                    rolling=rolling, x=x, y=y)
+                    else:
+                        si_flags = 0
+                        if x != 0 or y != 0:
+                            si_flags |= _MOUSEEVENTF_MOVE
+                        # Map interception button states to SendInput flags
+                        _SI_MAP = {
+                            INTERCEPTION_MOUSE_LEFT_BUTTON_DOWN: _MOUSEEVENTF_LEFTDOWN,
+                            INTERCEPTION_MOUSE_LEFT_BUTTON_UP: _MOUSEEVENTF_LEFTUP,
+                            INTERCEPTION_MOUSE_RIGHT_BUTTON_DOWN: _MOUSEEVENTF_RIGHTDOWN,
+                            INTERCEPTION_MOUSE_RIGHT_BUTTON_UP: _MOUSEEVENTF_RIGHTUP,
+                            INTERCEPTION_MOUSE_MIDDLE_BUTTON_DOWN: _MOUSEEVENTF_MIDDLEDOWN,
+                            INTERCEPTION_MOUSE_MIDDLE_BUTTON_UP: _MOUSEEVENTF_MIDDLEUP,
+                        }
+                        for ic_flag, si_flag in _SI_MAP.items():
+                            if state & ic_flag:
+                                si_flags |= si_flag
+                        if state & INTERCEPTION_MOUSE_WHEEL:
+                            si_flags |= _MOUSEEVENTF_WHEEL
+                        mouse._send(si_flags, dx=x, dy=y,
+                                    mouse_data=rolling)
+            else:
+                print(f"[WARN] Unknown event type 0x{event_type:02x} at event {i + 1}")
+                break
+
+    print(f"[INFO] Replay complete.")
+
 
 def key_down(kbd: Keyboard, key_name: str) -> None:
     info = resolve_key(key_name)
@@ -541,6 +803,9 @@ def execute_commands(
     default_hold_sec: float,
     mouse_move_default_duration_sec: float,
     mouse_move_default_wobble: float,
+    config_dir: Path = Path("."),
+    _depth: int = 0,
+    _seen_files: set = None,
 ) -> None:
     for idx, cmd in enumerate(commands, start=1):
         ctype = str(cmd.get("type", "")).strip().lower()
@@ -550,6 +815,44 @@ def execute_commands(
             if sec < 0:
                 raise ValueError(f"commands[{idx}].sec must be >= 0")
             time.sleep(sec)
+            continue
+
+        if ctype == "file":
+            if _depth >= MAX_FILE_INCLUDE_DEPTH:
+                raise ValueError(f"commands[{idx}]: nested 'file' includes exceed max depth {MAX_FILE_INCLUDE_DEPTH}")
+            raw_path = str(cmd.get("path", "")).strip()
+            if not raw_path:
+                raise ValueError(f"commands[{idx}].path is required for type: file")
+            file_path = Path(raw_path)
+            if not file_path.is_absolute():
+                file_path = config_dir / file_path
+            file_path = file_path.resolve()
+            if _seen_files is None:
+                _seen_files = set()
+            if file_path in _seen_files:
+                raise ValueError(f"commands[{idx}]: circular include detected: {file_path}")
+            if not file_path.exists():
+                raise FileNotFoundError(f"commands[{idx}]: file not found: {file_path}")
+            seen = _seen_files | {file_path}
+            ext = file_path.suffix.lower()
+            if ext in (".yaml", ".yml"):
+                sub_cfg = load_config(file_path)
+                sub_commands = sub_cfg.get("commands", [])
+                if not isinstance(sub_commands, list) or not sub_commands:
+                    raise ValueError(f"commands[{idx}]: file {file_path} has no valid 'commands' list")
+                execute_commands(
+                    kbd, mouse, sub_commands,
+                    default_hold_sec=default_hold_sec,
+                    mouse_move_default_duration_sec=mouse_move_default_duration_sec,
+                    mouse_move_default_wobble=mouse_move_default_wobble,
+                    config_dir=file_path.parent,
+                    _depth=_depth + 1,
+                    _seen_files=seen,
+                )
+            elif ext == ".bin":
+                replay_recording(kbd, mouse, file_path)
+            else:
+                raise ValueError(f"commands[{idx}]: unsupported file type: {ext!r} (use .yaml/.yml or .bin)")
             continue
 
         if ctype == "key":
@@ -611,13 +914,56 @@ def execute_commands(
         raise ValueError(f"commands[{idx}] has unsupported type: {ctype!r}")
 
 
+def _resolve_driver(cfg: Dict[str, Any], config_path: Path) -> str:
+    driver = str(cfg.get("driver", {}).get("dll_path", "interception.dll"))
+    return resolve_dll_path(driver, config_path)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Interception periodic input runner")
     parser.add_argument("--config", default="config.yaml", help="Path to YAML config")
     parser.add_argument("--once", action="store_true", help="Run one cycle and exit")
+    parser.add_argument("--record", metavar="OUTPUT",
+                        help="Record keyboard/mouse input to a .bin file. Press F12 to stop.")
     args = parser.parse_args()
 
     config_path = Path(args.config)
+
+    # --- Record mode ---
+    if args.record:
+        cfg = {}
+        if config_path.exists():
+            cfg = load_config(config_path)
+        resolved_driver = _resolve_driver(cfg, config_path)
+
+        # Recording requires Interception driver (no SendInput fallback)
+        try:
+            recorder = InterceptionRecorder(dll_path=resolved_driver)
+        except (RuntimeError, OSError) as exc:
+            print("[ERROR] Recording requires the Interception driver.")
+            print(f"        {exc}")
+            sys.exit(1)
+
+        # Need a mouse instance for move_to(0,0) at recording start
+        try:
+            mouse = InterceptionMouse(dll_path=resolved_driver)
+        except (RuntimeError, OSError) as exc:
+            print("[ERROR] Recording requires the Interception mouse driver.")
+            print(f"        {exc}")
+            recorder.close()
+            sys.exit(1)
+
+        output_path = Path(args.record)
+        print(f"[INFO] Recording to {output_path}. Press F12 to stop (Ctrl+C as backup).")
+        try:
+            count = recorder.record_loop(output_path, mouse)
+        finally:
+            recorder.close()
+            mouse.close()
+        print(f"[INFO] Recorded {count} events to {output_path}")
+        return
+
+    # --- Normal execution mode ---
     if not config_path.exists():
         raise FileNotFoundError(f"Config not found: {config_path}")
 
@@ -643,8 +989,7 @@ def main() -> None:
     if mouse_move_default_wobble < 0:
         raise ValueError("options.mouse_move_default_wobble must be >= 0")
 
-    driver = str(cfg.get("driver", {}).get("dll_path", "interception.dll"))
-    resolved_driver = resolve_dll_path(driver, config_path)
+    resolved_driver = _resolve_driver(cfg, config_path)
 
     if schedule.start_delay_sec > 0:
         print(f"[INFO] Starting in {schedule.start_delay_sec:.2f}s...")
@@ -695,6 +1040,7 @@ def main() -> None:
                 default_hold_sec=default_hold_sec,
                 mouse_move_default_duration_sec=mouse_move_default_duration_sec,
                 mouse_move_default_wobble=mouse_move_default_wobble,
+                config_dir=config_path.parent.resolve(),
             )
 
             if args.once:

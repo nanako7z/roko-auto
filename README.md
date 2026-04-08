@@ -24,6 +24,24 @@ python interception_runner.py --config config.yaml
 python interception_runner.py --config config.yaml --once
 ```
 
+## 操作录制
+
+录制键盘和鼠标操作，保存为二进制文件（`.bin`），可直接回放。
+
+```bash
+python interception_runner.py --record macros/login.bin
+```
+
+- 录制开始时光标自动归零到屏幕原点 `(0, 0)`，确保录制和回放起点一致
+- 按 **F12** 停止录制（Ctrl+C 作为备用）
+- 录制需要 Interception 驱动，不支持 SendInput 降级
+- 输出的 `.bin` 文件可通过 `type: file` 命令直接回放
+
+二进制格式（紧凑高效，适合高频鼠标事件）：
+- Header：`RCRD` magic + version + event count（10 字节）
+- 键盘事件：7 字节（delta_ms + scan code + state）
+- 鼠标事件：17 字节（delta_ms + state + flags + rolling + x + y）
+
 ## 配置
 `config.yaml` 支持：
 - `schedule.interval_sec`：周期
@@ -38,6 +56,25 @@ python interception_runner.py --config config.yaml --once
 3. `mouse_move`（支持 `absolute: true` + `duration` + `wobble` 的人工轨迹）
 4. `mouse_scroll`
 5. `wait`
+6. `file` — 从外部文件加载并执行命令
+
+### `type: file` 命令
+
+从外部文件加载命令，支持 `.yaml`/`.yml`（命令列表）和 `.bin`（录制文件）：
+
+```yaml
+commands:
+  - type: file
+    path: macros/login_sequence.yaml    # YAML 命令文件
+  - type: wait
+    sec: 2
+  - type: file
+    path: recordings/mouse_action.bin   # 二进制录制文件回放
+```
+
+- 路径相对于当前配置文件所在目录解析
+- 支持嵌套引用（最大深度 10 层），自动检测循环引用
+- YAML 外部文件只需包含 `commands:` 列表
 
 当前示例：
 1. 按下 `tab`
