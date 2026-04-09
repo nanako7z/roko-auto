@@ -636,6 +636,7 @@ class InterceptionRecorder:
             print("[INFO] Cursor moved to origin (0, 0).")
 
             last_time = time.perf_counter()
+            ctrl_held = False
 
             try:
                 while True:
@@ -643,7 +644,7 @@ class InterceptionRecorder:
                     now = time.perf_counter()
                     delta_ms = _clamp_delta_ms(now - last_time)
 
-                    is_kb = 1 <= device <= 20
+                    is_kb = 1 <= device <= 10
 
                     if is_kb:
                         stroke = InterceptionKeyStroke()
@@ -652,10 +653,24 @@ class InterceptionRecorder:
                         if n <= 0:
                             continue
 
-                        # Check for F12 stop key (don't forward, don't record)
                         base_state = stroke.state & ~INTERCEPTION_KEY_E0
-                        if stroke.code == F12_SCAN and base_state == INTERCEPTION_KEY_DOWN:
+                        is_down = (base_state == INTERCEPTION_KEY_DOWN)
+
+                        # Track Ctrl state for Ctrl+C detection
+                        if stroke.code == 0x1D:  # Ctrl scancode
+                            ctrl_held = is_down
+
+                        # Check for F12 stop key (don't forward, don't record)
+                        if stroke.code == F12_SCAN and is_down:
                             print("\n[INFO] F12 pressed — stopping recording.")
+                            break
+
+                        # Check for Ctrl+C (scancode 0x2E = 'c')
+                        if stroke.code == 0x2E and is_down and ctrl_held:
+                            print("\n[INFO] Ctrl+C pressed — stopping recording.")
+                            # Forward the keystrokes so the terminal still gets them
+                            self.lib.interception_send(
+                                self.context, device, ctypes.byref(stroke), 1)
                             break
 
                         # Record and forward
