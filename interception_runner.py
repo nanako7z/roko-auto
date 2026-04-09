@@ -207,8 +207,8 @@ class InterceptionMouse:
             self.context = None
 
     def _pick_mouse_device(self) -> int:
-        # Interception mouse device id range: 21..40
-        for device in range(21, 41):
+        # Interception mouse device id range: 11..20
+        for device in range(11, 21):
             if self.lib.interception_is_mouse(device):
                 return device
         raise RuntimeError("No mouse device found by Interception")
@@ -604,8 +604,8 @@ class InterceptionRecorder:
             raise RuntimeError("Failed to create Interception context for recording")
 
         # Keep references to prevent GC of the callbacks
-        self._kb_pred = INTERCEPTION_PREDICATE(lambda d: int(1 <= d <= 20))
-        self._mouse_pred = INTERCEPTION_PREDICATE(lambda d: int(21 <= d <= 40))
+        self._kb_pred = INTERCEPTION_PREDICATE(lambda d: int(1 <= d <= 10))
+        self._mouse_pred = INTERCEPTION_PREDICATE(lambda d: int(11 <= d <= 20))
 
         self.lib.interception_set_filter(self.context, self._kb_pred, INTERCEPTION_FILTER_KEY_ALL)
         self.lib.interception_set_filter(self.context, self._mouse_pred, INTERCEPTION_FILTER_MOUSE_ALL)
