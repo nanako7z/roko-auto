@@ -580,8 +580,8 @@ class InterceptionRecorder:
         ]
         self.lib.interception_set_filter.restype = None
 
-        self.lib.interception_wait.argtypes = [ctypes.c_void_p]
-        self.lib.interception_wait.restype = ctypes.c_int
+        self.lib.interception_wait_with_timeout.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+        self.lib.interception_wait_with_timeout.restype = ctypes.c_int
 
         self.lib.interception_receive.argtypes = [
             ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint,
@@ -615,11 +615,23 @@ class InterceptionRecorder:
             self.lib.interception_destroy_context(self.context)
             self.context = None
 
+    @staticmethod
+    def _check_stop_hotkey() -> bool:
+        """Check F12 or Ctrl+C via GetAsyncKeyState (works with remote desktop)."""
+        user32 = ctypes.windll.user32
+        # VK_F12 = 0x7B
+        if user32.GetAsyncKeyState(0x7B) & 0x8000:
+            return True
+        # VK_CONTROL = 0x11, VK_C = 0x43
+        if (user32.GetAsyncKeyState(0x11) & 0x8000) and (user32.GetAsyncKeyState(0x43) & 0x8000):
+            return True
+        return False
+
     def record_loop(self, output_path: Path, mouse: Mouse) -> int:
         """Capture events and write to binary file. Returns event count.
 
         Moves cursor to origin (0,0) before recording starts.
-        Stops on F12 press or KeyboardInterrupt (Ctrl+C).
+        Stops on F12 press or Ctrl+C (also works via remote desktop).
         """
         output_path.parent.mkdir(parents=True, exist_ok=True)
         count = 0
@@ -629,7 +641,7 @@ class InterceptionRecorder:
             _write_rec_header(f, 0)
 
             # Move cursor to origin and write as first event
-            mouse.move_to(0, 0)
+            ctypes.windll.user32.SetCursorPos(0, 0)
             _write_rec_mouse(f, 0, 0, INTERCEPTION_MOUSE_MOVE_ABSOLUTE, 0,
                              0, 0)
             count = 1
@@ -640,7 +652,16 @@ class InterceptionRecorder:
 
             try:
                 while True:
-                    device = self.lib.interception_wait(self.context)
+                    # Use timeout so we can periodically check GetAsyncKeyState
+                    device = self.lib.interception_wait_with_timeout(self.context, 100)
+
+                    if device == 0:
+                        # Timeout — no Interception event, check hotkey
+                        if self._check_stop_hotkey():
+                            print("\n[INFO] Stop hotkey detected — stopping recording.")
+                            break
+                        continue
+
                     now = time.perf_counter()
                     delta_ms = _clamp_delta_ms(now - last_time)
 
@@ -668,7 +689,6 @@ class InterceptionRecorder:
                         # Check for Ctrl+C (scancode 0x2E = 'c')
                         if stroke.code == 0x2E and is_down and ctrl_held:
                             print("\n[INFO] Ctrl+C pressed — stopping recording.")
-                            # Forward the keystrokes so the terminal still gets them
                             self.lib.interception_send(
                                 self.context, device, ctypes.byref(stroke), 1)
                             break
