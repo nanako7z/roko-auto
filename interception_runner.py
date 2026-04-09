@@ -233,8 +233,7 @@ class InterceptionMouse:
         self._send(state=0, x=x, y=y)
 
     def move_to(self, x: int, y: int) -> None:
-        nx, ny = _pixel_to_norm(x, y)
-        self._send(state=0, flags=INTERCEPTION_MOUSE_MOVE_ABSOLUTE, x=nx, y=ny)
+        ctypes.windll.user32.SetCursorPos(x, y)
 
     def scroll(self, amount: int) -> None:
         self._send(INTERCEPTION_MOUSE_WHEEL, rolling=amount * 120)
@@ -285,8 +284,7 @@ class SendInputMouse:
         self._send(_MOUSEEVENTF_MOVE, dx=x, dy=y)
 
     def move_to(self, x: int, y: int) -> None:
-        nx, ny = _pixel_to_norm(x, y)
-        self._send(_MOUSEEVENTF_MOVE | _MOUSEEVENTF_ABSOLUTE, dx=nx, dy=ny)
+        ctypes.windll.user32.SetCursorPos(x, y)
 
     def scroll(self, amount: int) -> None:
         self._send(_MOUSEEVENTF_WHEEL, mouse_data=amount * 120)
@@ -497,6 +495,14 @@ def _pixel_to_norm(x: int, y: int) -> tuple:
     sw = user32.GetSystemMetrics(0)
     sh = user32.GetSystemMetrics(1)
     return (x * 65535 // max(sw - 1, 1), y * 65535 // max(sh - 1, 1))
+
+
+def _norm_to_pixel(nx: int, ny: int) -> tuple:
+    """Convert normalized coordinates (0–65535) back to pixel coordinates."""
+    user32 = ctypes.WinDLL("user32")
+    sw = user32.GetSystemMetrics(0)
+    sh = user32.GetSystemMetrics(1)
+    return (nx * max(sw - 1, 1) // 65535, ny * max(sh - 1, 1) // 65535)
 
 
 def resolve_key(key: str) -> Dict[str, Any]:
@@ -738,6 +744,9 @@ def replay_recording(kbd: Keyboard, mouse: Mouse, path: Path) -> None:
 
         print(f"[INFO] Replaying {count} events from {path}")
 
+        # Move cursor to origin before replay (matches recording start)
+        ctypes.windll.user32.SetCursorPos(0, 0)
+
         for i in range(count):
             # Peek at event type byte
             type_byte = f.read(1)
@@ -769,21 +778,9 @@ def replay_recording(kbd: Keyboard, mouse: Mouse, path: Path) -> None:
 
                 # Determine if this is absolute positioning
                 if flags & INTERCEPTION_MOUSE_MOVE_ABSOLUTE:
-                    # Absolute move: use move_to with pixel coords
-                    # The recorded x,y are already in normalized (0-65535) form
-                    if isinstance(mouse, InterceptionMouse):
-                        mouse._send(state=state, flags=flags,
-                                    rolling=rolling, x=x, y=y)
-                    else:
-                        # SendInputMouse: reconstruct the appropriate calls
-                        if state:
-                            # Has button/wheel state
-                            mouse._send(flags=state, dx=x, dy=y,
-                                        mouse_data=rolling)
-                        else:
-                            mouse._send(
-                                _MOUSEEVENTF_MOVE | _MOUSEEVENTF_ABSOLUTE,
-                                dx=x, dy=y)
+                    # Recorded x,y are in normalized (0-65535) form, convert to pixels
+                    px, py = _norm_to_pixel(x, y)
+                    ctypes.windll.user32.SetCursorPos(px, py)
                 else:
                     # Relative move or button/wheel event
                     if isinstance(mouse, InterceptionMouse):
