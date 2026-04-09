@@ -962,7 +962,7 @@ def main() -> None:
                         help="Record keyboard/mouse input to a .bin file. Press F12 to stop.")
     args = parser.parse_args()
 
-    config_path = Path(args.config)
+    config_path = Path(args.config).resolve()
 
     # --- Record mode ---
     if args.record:
