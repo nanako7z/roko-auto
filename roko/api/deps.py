@@ -22,6 +22,7 @@ class AppState:
         self.started_at: datetime = datetime.now()
         self.config_dir: Path = Path(".")
         self.commands_dir: Optional[Path] = None
+        self.dll_path: Optional[str] = None  # Resolved Interception DLL path
 
 
 # Global singleton

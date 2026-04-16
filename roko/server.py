@@ -20,6 +20,7 @@ from .screen.capture import ScreenCapture
 def _init_input_devices(dll_path: str, config_path: Path):
     """Initialize keyboard and mouse — try Interception, fall back to SendInput."""
     resolved = resolve_dll_path(dll_path, config_path)
+    app_state.dll_path = resolved
 
     try:
         from .input.context import SharedInterceptionContext, SharedKeyboard, SharedMouse

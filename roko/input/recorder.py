@@ -87,8 +87,16 @@ class InterceptionRecorder:
             return True
         return False
 
-    def record_loop(self, output_path: Path, mouse: Any) -> int:
-        """Capture events and write to binary file. Returns event count."""
+    def record_loop(self, output_path: Path, mouse: Any,
+                    stop_event=None, on_event=None) -> int:
+        """Capture events and write to binary file. Returns event count.
+
+        Args:
+            output_path: Path to write the .bin recording.
+            mouse: Mouse device instance (unused, kept for API compat).
+            stop_event: Optional threading.Event — when set, stops recording.
+            on_event: Optional callback(count) called after each event is recorded.
+        """
         output_path.parent.mkdir(parents=True, exist_ok=True)
         count = 0
 
@@ -98,6 +106,8 @@ class InterceptionRecorder:
             ctypes.windll.user32.SetCursorPos(0, 0)
             _write_rec_mouse(f, 0, 0, INTERCEPTION_MOUSE_MOVE_ABSOLUTE, 0, 0, 0)
             count = 1
+            if on_event:
+                on_event(count)
             print("[INFO] Cursor moved to origin (0, 0).")
 
             last_time = time.perf_counter()
@@ -105,6 +115,10 @@ class InterceptionRecorder:
 
             try:
                 while True:
+                    if stop_event and stop_event.is_set():
+                        print("[INFO] External stop signal — stopping recording.")
+                        break
+
                     device = self.lib.interception_wait_with_timeout(self.context, 100)
 
                     if device == 0:
@@ -133,6 +147,8 @@ class InterceptionRecorder:
 
                         if stroke.code == F12_SCAN and is_down:
                             print("\n[INFO] F12 pressed — stopping recording.")
+                            self.lib.interception_send(
+                                self.context, device, ctypes.byref(stroke), 1)
                             break
 
                         if stroke.code == 0x2E and is_down and ctrl_held:
@@ -143,6 +159,8 @@ class InterceptionRecorder:
 
                         _write_rec_key(f, delta_ms, stroke.code, stroke.state)
                         count += 1
+                        if on_event:
+                            on_event(count)
                         self.lib.interception_send(
                             self.context, device, ctypes.byref(stroke), 1)
                     else:
@@ -156,6 +174,8 @@ class InterceptionRecorder:
                                          stroke.flags, stroke.rolling,
                                          stroke.x, stroke.y)
                         count += 1
+                        if on_event:
+                            on_event(count)
                         self.lib.interception_send(
                             self.context, device, ctypes.byref(stroke), 1)
 
