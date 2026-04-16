@@ -76,6 +76,15 @@ def start_server(config_path: Path = None) -> None:
     task_manager = TaskManager(kbd, mouse, config_dir=config_dir, tasks_dir=tasks_dir,
                                commands_dir=commands_dir)
 
+    # Scan command files from commands_dir
+    cmd_count = 0
+    if commands_dir.exists():
+        for ext in ("*.yaml", "*.yml"):
+            for p in sorted(commands_dir.glob(ext)):
+                print(f"[INFO] Found command file: {p.stem}")
+                cmd_count += 1
+    print(f"[INFO] Command files discovered: {cmd_count}")
+
     # Load tasks from directory
     task_configs = load_tasks_from_directory(tasks_dir)
     for tc in task_configs:

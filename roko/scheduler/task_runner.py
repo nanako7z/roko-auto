@@ -193,6 +193,11 @@ class TaskRunner:
             file_path = Path(self.config.command_file)
             if not file_path.is_absolute():
                 file_path = self.config_dir / file_path
+                # Fallback: try commands_dir if not found in config_dir
+                if not file_path.exists() and self.commands_dir:
+                    alt = self.commands_dir / self.config.command_file
+                    if alt.exists():
+                        file_path = alt
             file_path = file_path.resolve()
             cfg = load_config(file_path)
             commands = cfg.get("commands", [])
