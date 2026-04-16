@@ -125,7 +125,51 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
 .cmd-file-info { flex:1; }
 .cmd-file-name { font-size:15px; font-weight:600; }
 .cmd-file-meta { font-size:12px; color:var(--text2); margin-top:2px; }
-@media(max-width:768px) { .sidebar { width:60px; } .sidebar-header h1,.sidebar-header .subtitle,.nav-item span:not(.icon),.sidebar-status { display:none; } .nav-item { justify-content:center; padding:12px; } .form-row,.form-row-3 { grid-template-columns:1fr; } }
+/* Recording */
+.rec-panel { text-align:center; padding:40px 20px; }
+.rec-status { margin:20px 0; }
+.rec-dot { display:inline-block; width:16px; height:16px; border-radius:50%; background:var(--red); margin-right:8px; vertical-align:middle; }
+.rec-dot.pulse { animation:recPulse 1s infinite; }
+@keyframes recPulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(243,139,168,.7)} 50%{opacity:.7;box-shadow:0 0 12px 4px rgba(243,139,168,.4)} }
+.rec-timer { font-size:36px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--text); margin:16px 0; }
+.rec-events { font-size:14px; color:var(--text2); margin-bottom:24px; }
+.rec-form { max-width:400px; margin:0 auto; }
+.rec-hint { font-size:12px; color:var(--text2); margin-top:12px; line-height:1.6; }
+.source-badge { display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:600; margin-left:6px; background:rgba(243,139,168,.15); color:var(--red); vertical-align:middle; }
+/* Mobile */
+@media(max-width:768px) {
+  .app { flex-direction:column; height:auto; min-height:100vh; }
+  .sidebar { width:100%; height:auto; border-right:none; border-bottom:1px solid var(--border); flex-shrink:0; }
+  .sidebar-header { padding:12px 16px; display:flex; align-items:center; gap:12px; }
+  .sidebar-header h1 { font-size:16px; } .sidebar-header .subtitle { display:none; }
+  .sidebar-nav { display:flex; flex-direction:row; padding:0 8px 8px; gap:4px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .nav-item { flex:0 0 auto; padding:8px 12px; font-size:13px; gap:6px; white-space:nowrap; }
+  .nav-item .icon { font-size:16px; width:auto; }
+  .sidebar-status { display:none; }
+  .main { flex:1; min-height:0; }
+  .topbar { height:48px; padding:0 16px; }
+  .topbar h2 { font-size:14px; }
+  .topbar-actions { gap:4px; }
+  .topbar-actions .btn { padding:6px 10px; font-size:12px; }
+  .content { padding:12px; }
+  .task-card { flex-direction:column; align-items:stretch; gap:10px; padding:12px; }
+  .task-actions { justify-content:flex-end; flex-wrap:wrap; }
+  .form-row,.form-row-3 { grid-template-columns:1fr; }
+  .modal { max-width:96vw; max-height:95vh; border-radius:8px; }
+  .modal-header { padding:14px 16px; }
+  .modal-body { padding:16px; }
+  .modal-footer { padding:12px 16px; }
+  .cmd-item { flex-wrap:wrap; }
+  .cmd-detail { width:100%; order:3; }
+  .stats-grid { grid-template-columns:1fr 1fr; gap:8px; }
+  .stat-card { padding:12px; }
+  .stat-value { font-size:22px; }
+  .monitor-frame img { min-width:100% !important; min-height:auto !important; }
+  .cmd-file-card { flex-direction:column; align-items:stretch; gap:8px; }
+  .add-cmd-types { gap:4px; }
+  .add-cmd-types button { padding:8px 12px; font-size:13px; }
+  .rec-timer { font-size:28px; }
+}
 </style>
 </head>
 <body>
@@ -135,6 +179,7 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
     <nav class="sidebar-nav" id="sidebarNav">
       <button class="nav-item active" onclick="showSection('tasks')"><span class="icon">&#9776;</span><span>任务管理</span></button>
       <button class="nav-item" onclick="showSection('commands')"><span class="icon">&#9998;</span><span>命令库</span></button>
+      <button class="nav-item" onclick="showSection('record')"><span class="icon">&#9210;</span><span>操作录制</span></button>
       <button class="nav-item" onclick="showSection('monitor')"><span class="icon">&#9673;</span><span>屏幕监控</span></button>
       <button class="nav-item" onclick="showSection('system')"><span class="icon">&#9881;</span><span>系统状态</span></button>
     </nav>
@@ -148,6 +193,28 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
     <div class="section" id="section-commands">
       <div class="topbar"><h2>命令库</h2><div class="topbar-actions"><button class="btn btn-sm" onclick="refreshCmdFiles()">刷新</button><button class="btn btn-sm btn-primary" onclick="openCmdFileModal()">+ 新建命令</button></div></div>
       <div class="content"><div id="cmdFileList"></div></div>
+    </div>
+    <div class="section" id="section-record">
+      <div class="topbar"><h2>操作录制</h2></div>
+      <div class="content">
+        <div class="rec-panel" id="recPanel">
+          <div id="recIdle">
+            <div style="font-size:48px;opacity:.5;margin-bottom:16px;">&#9210;</div>
+            <p style="color:var(--text2);margin-bottom:24px;">录制被控机器的键盘和鼠标操作，自动保存到命令库</p>
+            <div class="rec-form">
+              <div class="form-group"><label>录制名称</label><input type="text" id="recName" placeholder="例如 login_flow"></div>
+              <button class="btn btn-primary" onclick="startRecording()" style="width:100%;justify-content:center;">开始录制</button>
+            </div>
+            <div class="rec-hint">录制开始后，鼠标将自动回到原点 (0,0)，之后的所有键盘和鼠标操作将被记录。<br>按 F12 或在此页面点击停止即可结束录制。</div>
+          </div>
+          <div id="recActive" style="display:none;">
+            <div class="rec-status"><span class="rec-dot pulse"></span><span style="font-size:16px;font-weight:600;color:var(--red);">录制中</span></div>
+            <div class="rec-timer" id="recTimer">00:00</div>
+            <div class="rec-events">已录制 <span id="recEventCount" style="color:var(--text);font-weight:600;">0</span> 个事件</div>
+            <button class="btn btn-danger" onclick="stopRecording()" style="padding:12px 40px;font-size:15px;">停止录制</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="section" id="section-monitor">
       <div class="topbar"><h2>屏幕监控</h2><div class="topbar-actions"><button class="btn btn-sm" id="monitorToggle" onclick="toggleMonitor()">开始</button></div></div>
@@ -215,7 +282,7 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
 
 <script>
 const API='';
-const SECTIONS=['tasks','commands','monitor','system'];
+const SECTIONS=['tasks','commands','record','monitor','system'];
 const STATE_LABELS={running:'运行中',idle:'空闲',paused:'已暂停',error:'异常',completed:'已完成'};
 const ACTION_LABELS={start:'已启动',stop:'已停止',pause:'已暂停',resume:'已恢复',trigger:'已触发'};
 const KEY_OPTIONS=['tab','enter','esc','space','backspace','up','down','left','right','ctrl','shift','alt','f12',
@@ -450,7 +517,7 @@ async function refreshCmdFiles(){await loadCmdFilesForEditor();renderCmdFiles();
 function renderCmdFiles(){
   const el=document.getElementById('cmdFileList');
   if(!cmdFiles.length){el.innerHTML='<div class="empty-state"><div class="icon">&#9998;</div><p>暂无命令文件</p><button class="btn btn-primary" onclick="openCmdFileModal()">+ 创建第一个命令</button></div>';return;}
-  el.innerHTML=cmdFiles.map(f=>`<div class="cmd-file-card"><div class="cmd-file-info"><div class="cmd-file-name">${esc(f.name)}</div><div class="cmd-file-meta">${f.filename} · ${f.command_count} 条动作</div></div>
+  el.innerHTML=cmdFiles.map(f=>`<div class="cmd-file-card"><div class="cmd-file-info"><div class="cmd-file-name">${esc(f.name)}${f.source==='recording'?'<span class="source-badge">&#9210; 录制</span>':''}</div><div class="cmd-file-meta">${f.filename} · ${f.command_count} 条动作${f.event_count?' · '+f.event_count+' 事件':''}</div></div>
     <div class="task-actions"><button class="btn btn-sm" onclick="editCmdFile('${esc(f.name)}')">编辑</button><button class="btn btn-sm btn-danger btn-icon" onclick="deleteCmdFile('${esc(f.name)}')" title="删除">&times;</button></div></div>`).join('');
 }
 function openCmdFileModal(data=null){
@@ -527,9 +594,62 @@ function parseSimpleYaml(text){
 }
 function pv(v){if(v==='true')return true;if(v==='false')return false;if(v==='null'||v==='')return null;if(/^-?\d+$/.test(v))return parseInt(v);if(/^-?\d+\.\d+$/.test(v))return parseFloat(v);if(v.startsWith('[')&&v.endsWith(']'))return v.slice(1,-1).split(',').map(s=>pv(s.trim()));if((v.startsWith('"')&&v.endsWith('"'))||(v.startsWith("'")&&v.endsWith("'")))return v.slice(1,-1);return v;}
 
+/* ══════════════════════════════════════════
+   ── Recording ──
+   ══════════════════════════════════════════ */
+
+let recPolling=null, recStartTime=0;
+
+async function startRecording(){
+  const name=document.getElementById('recName').value.trim();
+  if(!name){toast('请输入录制名称','error');return;}
+  try{
+    await api('/api/record/start',{method:'POST',body:JSON.stringify({name})});
+    toast('录制已开始','success');
+    recStartTime=Date.now();
+    document.getElementById('recIdle').style.display='none';
+    document.getElementById('recActive').style.display='block';
+    recPolling=setInterval(pollRecording,500);
+  }catch(e){}
+}
+
+async function stopRecording(){
+  try{
+    const r=await api('/api/record/stop',{method:'POST'});
+    toast(`录制"${r.name}"已保存，共 ${r.event_count} 个事件`,'success');
+  }catch(e){}
+  _resetRecUI();
+}
+
+function _resetRecUI(){
+  if(recPolling){clearInterval(recPolling);recPolling=null;}
+  document.getElementById('recIdle').style.display='block';
+  document.getElementById('recActive').style.display='none';
+  document.getElementById('recTimer').textContent='00:00';
+  document.getElementById('recEventCount').textContent='0';
+}
+
+async function pollRecording(){
+  try{
+    const s=await fetch(API+'/api/record/status').then(r=>r.json());
+    if(!s.active){_resetRecUI();return;}
+    document.getElementById('recEventCount').textContent=s.event_count;
+    const elapsed=Math.floor((Date.now()-recStartTime)/1000);
+    const mm=String(Math.floor(elapsed/60)).padStart(2,'0');
+    const ss=String(elapsed%60).padStart(2,'0');
+    document.getElementById('recTimer').textContent=mm+':'+ss;
+  }catch(e){}
+}
+
 /* ── Init ── */
 refreshTasks();refreshSystem();
 setInterval(()=>{if(currentSection==='tasks')refreshTasks();refreshSystem();},5000);
+// Check if recording was already active on page load
+fetch(API+'/api/record/status').then(r=>r.json()).then(s=>{
+  if(s.active){recStartTime=Date.now()-s.elapsed*1000;document.getElementById('recName').value=s.name;
+    document.getElementById('recIdle').style.display='none';document.getElementById('recActive').style.display='block';
+    recPolling=setInterval(pollRecording,500);}
+}).catch(()=>{});
 </script>
 </body>
 </html>

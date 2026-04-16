@@ -31,11 +31,16 @@ def list_command_files() -> List[Dict[str, Any]]:
                 with f.open("r", encoding="utf-8") as fh:
                     data = yaml.safe_load(fh) or {}
                 cmds = data.get("commands", [])
-                result.append({
+                entry = {
                     "name": f.stem,
                     "filename": f.name,
                     "command_count": len(cmds) if isinstance(cmds, list) else 0,
-                })
+                }
+                if data.get("source"):
+                    entry["source"] = data["source"]
+                if data.get("event_count"):
+                    entry["event_count"] = data["event_count"]
+                result.append(entry)
             except Exception:
                 result.append({"name": f.stem, "filename": f.name, "command_count": 0})
     return result
@@ -81,10 +86,20 @@ def update_command_file(name: str, req: CommandFileRequest) -> Dict[str, Any]:
 
 @router.delete("/{name}")
 def delete_command_file(name: str) -> Dict[str, Any]:
-    """Delete a command file."""
+    """Delete a command file and associated .bin recording if present."""
     f = _resolve_file(name)
     if not f:
         raise HTTPException(status_code=404, detail=f"Command file '{name}' not found")
+    # Check if it's a recording and clean up .bin file
+    try:
+        with f.open("r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
+        if data.get("source") == "recording":
+            bin_path = f.parent / f"{f.stem}.bin"
+            if bin_path.exists():
+                bin_path.unlink()
+    except Exception:
+        pass
     f.unlink()
     return {"message": f"Command file '{f.name}' deleted"}
 
