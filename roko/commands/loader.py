@@ -37,6 +37,6 @@ def resolve_dll_path(dll_path: str, config_path: Path) -> str:
 
     for p in candidates:
         if p.exists():
-            return str(p)
+            return str(p.resolve())
 
     return dll_path
