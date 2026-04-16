@@ -169,7 +169,6 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
       <div id="tabForm">
         <div class="form-row">
           <div class="form-group"><label>任务名称</label><input type="text" id="fName" placeholder="例如 keep_alive"></div>
-          <div class="form-group"><label>是否启用</label><select id="fEnabled"><option value="true">是</option><option value="false">否</option></select></div>
         </div>
         <h4 style="font-size:13px;color:var(--accent);margin:20px 0 12px;">调度设置</h4>
         <div class="form-row-3">
@@ -192,7 +191,7 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
         <div id="cmdEditor"></div>
       </div>
       <div id="tabYaml" style="display:none;">
-        <div class="form-group"><label>完整任务配置（YAML）</label><textarea id="fYamlFull" rows="20" placeholder="name: my_task&#10;enabled: true&#10;schedule:&#10;  type: interval&#10;  interval_sec: 20&#10;commands:&#10;  - type: key&#10;    key: tab"></textarea><div class="form-hint">在此粘贴或直接编辑完整的任务配置 YAML</div></div>
+        <div class="form-group"><label>完整任务配置（YAML）</label><textarea id="fYamlFull" rows="20" placeholder="name: my_task&#10;schedule:&#10;  type: interval&#10;  interval_sec: 20&#10;commands:&#10;  - type: key&#10;    key: tab"></textarea><div class="form-hint">在此粘贴或直接编辑完整的任务配置 YAML</div></div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn" onclick="closeTaskModal()">取消</button><button class="btn btn-primary" id="taskModalSave" onclick="saveTask()">创建</button></div>
@@ -386,7 +385,6 @@ function openTaskModal(task=null){
   if(task){
     const c=task.config;
     document.getElementById('fName').value=c.name;document.getElementById('fName').disabled=true;
-    document.getElementById('fEnabled').value=String(c.enabled!==false);
     document.getElementById('fSchedType').value=c.schedule.type;
     document.getElementById('fInterval').value=c.schedule.interval_sec||20;
     document.getElementById('fCron').value=c.schedule.cron_expression||'';
@@ -399,7 +397,7 @@ function openTaskModal(task=null){
     taskCommands=JSON.parse(JSON.stringify(c.commands||[]));
   } else {
     document.getElementById('fName').value='';document.getElementById('fName').disabled=false;
-    document.getElementById('fEnabled').value='true';document.getElementById('fSchedType').value='interval';
+    document.getElementById('fSchedType').value='interval';
     document.getElementById('fInterval').value=20;document.getElementById('fCron').value='';
     document.getElementById('fJitter').value=0;document.getElementById('fDelay').value=0;document.getElementById('fPause').value=0;
     document.getElementById('fHold').value=0.1;document.getElementById('fMoveDur').value=0.8;document.getElementById('fWobble').value=0.1;
@@ -439,7 +437,7 @@ function buildPayloadFromForm(){
   if(st==='cron')schedule.cron_expression=document.getElementById('fCron').value.trim()||'*/5 * * * *';
   const options={default_hold_sec:parseFloat(document.getElementById('fHold').value)||0.1,pause_between_cycles_sec:parseFloat(document.getElementById('fPause').value)||0,
     mouse_move_default_duration_sec:parseFloat(document.getElementById('fMoveDur').value)||0.8,mouse_move_default_wobble:parseFloat(document.getElementById('fWobble').value)||0.1};
-  return{name,enabled:document.getElementById('fEnabled').value==='true',schedule,options,commands:taskCommands,command_file:null};
+  return{name,schedule,options,commands:taskCommands,command_file:null};
 }
 function editTask(n){const t=tasks.find(t=>t.config.name===n);if(t)openTaskModal(t);}
 
@@ -509,7 +507,7 @@ function formatDuration(s){if(s<60)return Math.round(s)+' 秒';if(s<3600)return 
 
 function commandsToYaml(cmds){return cmds.map(c=>{let s='- type: '+c.type;for(const[k,v]of Object.entries(c)){if(k==='type')continue;s+=Array.isArray(v)?'\n  '+k+': ['+v.join(', ')+']':'\n  '+k+': '+v;}return s;}).join('\n');}
 function taskToYaml(c){
-  let y=`name: ${c.name}\nenabled: ${c.enabled!==false}\n\nschedule:\n  type: ${c.schedule.type}\n`;
+  let y=`name: ${c.name}\n\nschedule:\n  type: ${c.schedule.type}\n`;
   if(c.schedule.type==='interval')y+=`  interval_sec: ${c.schedule.interval_sec}\n`;
   if(c.schedule.type==='cron')y+=`  cron_expression: "${c.schedule.cron_expression||'*/5 * * * *'}"\n`;
   if(c.schedule.jitter_sec)y+=`  jitter_sec: ${c.schedule.jitter_sec}\n`;
