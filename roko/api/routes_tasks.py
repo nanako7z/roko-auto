@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from ..config.models import ScheduleConfig, SentinelConfig, TaskConfig, TaskOptions
 from ..scheduler.models import TaskStatus
@@ -40,7 +40,10 @@ def list_tasks():
 @router.post("", response_model=Dict[str, Any])
 def create_task(req: TaskCreateRequest):
     """Create a new task."""
-    config = TaskConfig(**req.model_dump())
+    try:
+        config = TaskConfig(**req.model_dump())
+    except (ValueError, ValidationError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
     try:
         status = app_state.task_manager.add_task(config, persist=True)
         return {"status": status.model_dump(), "message": f"Task '{config.name}' created"}
@@ -64,14 +67,17 @@ def update_task(name: str, req: TaskUpdateRequest):
     """Update task configuration."""
     try:
         existing = app_state.task_manager.get_task_config(name)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Task '{name}' not found")
+    try:
         update_data = req.model_dump(exclude_none=True)
         merged = existing.model_dump()
         merged.update(update_data)
         new_config = TaskConfig(**merged)
-        status = app_state.task_manager.update_task(name, new_config)
-        return {"status": status.model_dump(), "message": f"Task '{name}' updated"}
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Task '{name}' not found")
+    except (ValueError, ValidationError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    status = app_state.task_manager.update_task(name, new_config)
+    return {"status": status.model_dump(), "message": f"Task '{name}' updated"}
 
 
 @router.delete("/{name}")
