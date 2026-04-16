@@ -78,7 +78,7 @@ class TaskManager:
             return
         self.tasks_dir.mkdir(parents=True, exist_ok=True)
         file_path = self.tasks_dir / f"{config.name}.yaml"
-        data = config.model_dump(exclude_none=True)
+        data = config.model_dump(mode="json", exclude_none=True)
         with file_path.open("w", encoding="utf-8") as f:
             yaml.dump(data, f, default_flow_style=False, allow_unicode=True,
                       sort_keys=False)
