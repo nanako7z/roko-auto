@@ -32,7 +32,12 @@ class TemplateMatcher:
     def __init__(self, template_path: Path, threshold: float = 0.8) -> None:
         self.threshold = threshold
 
-        img = cv2.imread(str(template_path), cv2.IMREAD_UNCHANGED)
+        # Use np.fromfile + imdecode to support non-ASCII (e.g. Chinese) paths on Windows
+        template_path = Path(template_path)
+        if not template_path.exists():
+            raise FileNotFoundError(f"Cannot load template image: {template_path}")
+        buf = np.fromfile(str(template_path), dtype=np.uint8)
+        img = cv2.imdecode(buf, cv2.IMREAD_UNCHANGED)
         if img is None:
             raise FileNotFoundError(f"Cannot load template image: {template_path}")
 
