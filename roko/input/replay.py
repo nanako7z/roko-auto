@@ -58,9 +58,15 @@ def _norm_to_pixel(nx: int, ny: int) -> tuple:
     return (nx * max(sw - 1, 1) // 65535, ny * max(sh - 1, 1) // 65535)
 
 
+def _is_interception_mouse(mouse: Any) -> bool:
+    """Check if the mouse uses Interception-style _send(state, flags, rolling, x, y)."""
+    from .mouse import InterceptionMouse
+    from .context import SharedMouse
+    return isinstance(mouse, (InterceptionMouse, SharedMouse))
+
+
 def replay_recording(kbd: Any, mouse: Any, path: Path) -> None:
     """Replay a binary recording file, sending events with original timing."""
-    from .mouse import InterceptionMouse
 
     with path.open("rb") as f:
         header_data = f.read(_REC_HEADER_SIZE)
@@ -108,7 +114,7 @@ def replay_recording(kbd: Any, mouse: Any, path: Path) -> None:
                     px, py = _norm_to_pixel(x, y)
                     ctypes.windll.user32.SetCursorPos(px, py)
                 else:
-                    if isinstance(mouse, InterceptionMouse):
+                    if _is_interception_mouse(mouse):
                         mouse._send(state=state, flags=flags,
                                     rolling=rolling, x=x, y=y)
                     else:
