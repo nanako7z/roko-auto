@@ -24,6 +24,8 @@ class ScheduleCalculator:
             return self._cron_delay()
         elif self.config.type == ScheduleType.oneshot:
             return None  # Oneshot runs once then stops
+        elif self.config.type == ScheduleType.sentinel:
+            return None  # Sentinel manages its own scan loop
         return None
 
     def initial_delay(self) -> float:

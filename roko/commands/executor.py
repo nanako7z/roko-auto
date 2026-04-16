@@ -35,6 +35,7 @@ def execute_commands(
     mouse_move_default_wobble: float,
     config_dir: Path = Path("."),
     commands_dir: Path | None = None,
+    match_result: Any = None,
     _depth: int = 0,
     _seen_files: set = None,
 ) -> None:
@@ -99,6 +100,7 @@ def execute_commands(
                     mouse_move_default_wobble=mouse_move_default_wobble,
                     config_dir=file_path.parent,
                     commands_dir=commands_dir,
+                    match_result=match_result,
                     _depth=_depth + 1,
                     _seen_files=seen,
                 )
@@ -161,6 +163,23 @@ def execute_commands(
             if amount == 0:
                 raise ValueError(f"commands[{idx}].amount must be non-zero")
             mouse.scroll(amount)
+            continue
+
+        if ctype == "move_to_match":
+            if match_result is None:
+                raise ValueError(
+                    f"commands[{idx}]: move_to_match can only be used in sentinel tasks"
+                )
+            duration = float(cmd.get("duration", mouse_move_default_duration_sec))
+            wobble = float(cmd.get("wobble", mouse_move_default_wobble))
+            offset_x = int(cmd.get("offset_x", 0))
+            offset_y = int(cmd.get("offset_y", 0))
+            target_x = match_result.center_x + offset_x
+            target_y = match_result.center_y + offset_y
+            if duration > 0:
+                _human_move(mouse, target_x, target_y, duration, wobble)
+            else:
+                mouse.move_to(target_x, target_y)
             continue
 
         raise ValueError(f"commands[{idx}] has unsupported type: {ctype!r}")

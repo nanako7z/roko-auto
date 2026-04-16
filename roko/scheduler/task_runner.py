@@ -22,16 +22,21 @@ class TaskRunner:
     def __init__(self, config: TaskConfig, kbd: Any, mouse: Any,
                  config_dir: Path = Path("."),
                  commands_dir: Path | None = None,
-                 exec_lock: threading.Lock | None = None) -> None:
+                 exec_lock: threading.Lock | None = None,
+                 screen_capture: Any = None,
+                 templates_dir: Path | None = None) -> None:
         self.config = config
         self.kbd = kbd
         self.mouse = mouse
         self.config_dir = config_dir
         self.commands_dir = commands_dir
         self._exec_lock = exec_lock
+        self.screen_capture = screen_capture
+        self.templates_dir = templates_dir
 
         self.status = TaskStatus(name=config.name)
         self.scheduler = ScheduleCalculator(config.schedule)
+        self._last_match: Any = None  # Stores MatchResult for sentinel tasks
 
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
@@ -97,6 +102,11 @@ class TaskRunner:
                 if self._stop_event.wait(initial):
                     return
 
+            # Sentinel tasks use a separate scan-match-execute loop
+            if self.config.schedule.type == ScheduleType.sentinel:
+                self._sentinel_loop()
+                return
+
             while not self._stop_event.is_set():
                 # Check pause
                 self._pause_event.wait()
@@ -144,6 +154,63 @@ class TaskRunner:
             self.status.last_error = traceback.format_exc()
             print(f"[{self.name}] Task error: {e}")
 
+    def _sentinel_loop(self) -> None:
+        """Sentinel task loop: periodically scan screen for template match."""
+        from ..screen.matcher import TemplateMatcher
+
+        sentinel_cfg = self.config.sentinel
+        if not sentinel_cfg:
+            raise ValueError(f"Task '{self.name}' is sentinel type but has no sentinel config")
+        if not self.screen_capture:
+            raise RuntimeError(f"Task '{self.name}': screen capture not available for sentinel task")
+        if not self.templates_dir:
+            raise RuntimeError(f"Task '{self.name}': templates_dir not configured")
+
+        template_path = self.templates_dir / sentinel_cfg.template_image
+        if not template_path.exists():
+            # Try adding extensions
+            for ext in (".png", ".jpg", ".jpeg"):
+                candidate = self.templates_dir / (sentinel_cfg.template_image + ext)
+                if candidate.exists():
+                    template_path = candidate
+                    break
+        if not template_path.exists():
+            raise FileNotFoundError(
+                f"Template image not found: {sentinel_cfg.template_image} in {self.templates_dir}"
+            )
+
+        matcher = TemplateMatcher(template_path, threshold=sentinel_cfg.match_threshold)
+        scan_delay = sentinel_cfg.scan_interval_ms / 1000.0
+        region = tuple(sentinel_cfg.scan_region) if sentinel_cfg.scan_region else None
+
+        print(f"[{self.name}] Sentinel active: template={template_path.name}, "
+              f"threshold={sentinel_cfg.match_threshold}, interval={sentinel_cfg.scan_interval_ms}ms")
+
+        while not self._stop_event.is_set():
+            self._pause_event.wait()
+            if self._stop_event.is_set():
+                break
+
+            try:
+                screenshot = self.screen_capture.capture(region=region, format="png")
+                result = matcher.match(screenshot)
+            except Exception as e:
+                self.status.last_error = f"Scan error: {e}"
+                print(f"[{self.name}] Scan error: {e}")
+                if self._stop_event.wait(scan_delay):
+                    break
+                continue
+
+            if result:
+                print(f"[{self.name}] Match found! confidence={result.confidence:.3f} "
+                      f"center=({result.center_x},{result.center_y})")
+                self._last_match = result
+                self._execute_cycle()
+                self._last_match = None
+
+            if self._stop_event.wait(scan_delay):
+                break
+
     def _execute_cycle(self) -> float:
         """Execute one cycle. Returns seconds spent waiting for the exec lock."""
         self.status.cycle_count += 1
@@ -175,6 +242,7 @@ class TaskRunner:
                 mouse_move_default_wobble=self.config.options.mouse_move_default_wobble,
                 config_dir=self.config_dir,
                 commands_dir=self.commands_dir,
+                match_result=self._last_match,
             )
         except Exception as e:
             self.status.last_error = str(e)

@@ -18,12 +18,16 @@ class TaskManager:
 
     def __init__(self, kbd: Any, mouse: Any, config_dir: Path = Path("."),
                  tasks_dir: Optional[Path] = None,
-                 commands_dir: Optional[Path] = None) -> None:
+                 commands_dir: Optional[Path] = None,
+                 screen_capture: Any = None,
+                 templates_dir: Optional[Path] = None) -> None:
         self.kbd = kbd
         self.mouse = mouse
         self.config_dir = config_dir
         self.tasks_dir = tasks_dir  # Where to persist task YAML files
         self.commands_dir = commands_dir
+        self.screen_capture = screen_capture
+        self.templates_dir = templates_dir
         self._tasks: Dict[str, TaskRunner] = {}
         self._lock = threading.RLock()
         self._exec_lock = threading.Lock()  # Serializes command execution across tasks
@@ -35,7 +39,9 @@ class TaskManager:
             if config.name in self._tasks:
                 raise ValueError(f"Task '{config.name}' already exists")
             runner = TaskRunner(config, self.kbd, self.mouse, self.config_dir, self.commands_dir,
-                                exec_lock=self._exec_lock)
+                                exec_lock=self._exec_lock,
+                                screen_capture=self.screen_capture,
+                                templates_dir=self.templates_dir)
             self._tasks[config.name] = runner
             if persist:
                 self._save_task_file(config)
@@ -65,7 +71,9 @@ class TaskManager:
 
             # Re-create with new config
             new_runner = TaskRunner(config, self.kbd, self.mouse, self.config_dir,
-                                    self.commands_dir, exec_lock=self._exec_lock)
+                                    self.commands_dir, exec_lock=self._exec_lock,
+                                    screen_capture=self.screen_capture,
+                                    templates_dir=self.templates_dir)
             self._tasks[config.name] = new_runner
             self._save_task_file(config)
             if was_running:

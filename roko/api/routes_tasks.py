@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..config.models import ScheduleConfig, TaskConfig, TaskOptions
+from ..config.models import ScheduleConfig, SentinelConfig, TaskConfig, TaskOptions
 from ..scheduler.models import TaskStatus
 from .deps import app_state
 
@@ -20,6 +20,7 @@ class TaskCreateRequest(BaseModel):
     options: TaskOptions = TaskOptions()
     commands: List[Dict[str, Any]] = []
     command_file: Optional[str] = None
+    sentinel: Optional[SentinelConfig] = None
 
 
 class TaskUpdateRequest(BaseModel):
@@ -27,6 +28,7 @@ class TaskUpdateRequest(BaseModel):
     options: Optional[TaskOptions] = None
     commands: Optional[List[Dict[str, Any]]] = None
     command_file: Optional[str] = None
+    sentinel: Optional[SentinelConfig] = None
 
 
 @router.get("", response_model=List[Dict[str, Any]])

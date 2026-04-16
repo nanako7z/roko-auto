@@ -12,6 +12,7 @@ class ScheduleType(str, Enum):
     interval = "interval"
     cron = "cron"
     oneshot = "oneshot"
+    sentinel = "sentinel"
 
 
 class ScheduleConfig(BaseModel):
@@ -45,6 +46,37 @@ class ScheduleConfig(BaseModel):
         return v
 
 
+class SentinelConfig(BaseModel):
+    template_image: str  # Template image filename (in templates/ directory)
+    scan_interval_ms: int = 1000  # Scan interval in milliseconds
+    match_threshold: float = 0.8  # Match confidence threshold 0.0-1.0
+    scan_region: Optional[List[int]] = None  # Optional [left, top, width, height]
+
+    @field_validator("scan_interval_ms")
+    @classmethod
+    def interval_min(cls, v: int) -> int:
+        if v < 100:
+            raise ValueError("scan_interval_ms must be >= 100")
+        return v
+
+    @field_validator("match_threshold")
+    @classmethod
+    def threshold_range(cls, v: float) -> float:
+        if not 0.0 <= v <= 1.0:
+            raise ValueError("match_threshold must be between 0.0 and 1.0")
+        return v
+
+    @field_validator("scan_region")
+    @classmethod
+    def region_valid(cls, v: Optional[List[int]]) -> Optional[List[int]]:
+        if v is not None:
+            if len(v) != 4:
+                raise ValueError("scan_region must have exactly 4 elements [left, top, width, height]")
+            if v[2] <= 0 or v[3] <= 0:
+                raise ValueError("scan_region width and height must be > 0")
+        return v
+
+
 class TaskOptions(BaseModel):
     default_hold_sec: float = 0.1
     pause_between_cycles_sec: float = 0.0
@@ -67,6 +99,7 @@ class TaskConfig(BaseModel):
     options: TaskOptions = Field(default_factory=TaskOptions)
     commands: List[Dict[str, Any]] = Field(default_factory=list)
     command_file: Optional[str] = None
+    sentinel: Optional[SentinelConfig] = None
 
     @field_validator("name")
     @classmethod
@@ -100,3 +133,4 @@ class AppConfig(BaseModel):
     screen: ScreenConfig = Field(default_factory=ScreenConfig)
     tasks_dir: str = "./tasks"
     commands_dir: str = "./commands"
+    templates_dir: str = "./templates"

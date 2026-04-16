@@ -5,3 +5,6 @@ pydantic>=2.0
 mss
 Pillow
 croniter
+opencv-python-headless
+numpy
+python-multipart

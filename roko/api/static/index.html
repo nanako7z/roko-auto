@@ -136,6 +136,7 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
 .rec-form { max-width:400px; margin:0 auto; }
 .rec-hint { font-size:12px; color:var(--text2); margin-top:12px; line-height:1.6; }
 .source-badge { display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:600; margin-left:6px; background:rgba(243,139,168,.15); color:var(--red); vertical-align:middle; }
+input[type="range"] { -webkit-appearance:auto; height:6px; background:var(--border); border-radius:3px; border:none; padding:0; }
 /* Mobile */
 .mobile-nav-toggle { display:none; }
 .mobile-nav-dropdown { display:none; }
@@ -188,6 +189,7 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
     <nav class="sidebar-nav" id="sidebarNav">
       <button class="nav-item active" onclick="showSection('tasks')"><span class="icon">&#9776;</span><span>任务管理</span></button>
       <button class="nav-item" onclick="showSection('commands')"><span class="icon">&#9998;</span><span>命令库</span></button>
+      <button class="nav-item" onclick="showSection('templates')"><span class="icon">&#128444;</span><span>模板图片</span></button>
       <button class="nav-item" onclick="showSection('record')"><span class="icon">&#9210;</span><span>操作录制</span></button>
       <button class="nav-item" onclick="showSection('monitor')"><span class="icon">&#9673;</span><span>屏幕监控</span></button>
       <button class="nav-item" onclick="showSection('system')"><span class="icon">&#9881;</span><span>系统状态</span></button>
@@ -204,6 +206,10 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
     <div class="section" id="section-commands">
       <div class="topbar"><h2>命令库</h2><div class="topbar-actions"><button class="btn btn-sm" onclick="refreshCmdFiles()">刷新</button><button class="btn btn-sm btn-primary" onclick="openCmdFileModal()">+ 新建命令</button></div></div>
       <div class="content"><div id="cmdFileList"></div></div>
+    </div>
+    <div class="section" id="section-templates">
+      <div class="topbar"><h2>模板图片</h2><div class="topbar-actions"><button class="btn btn-sm" onclick="refreshTemplates()">刷新</button><button class="btn btn-sm btn-primary" onclick="document.getElementById('tplUploadInput').click()">+ 上传模板</button><input type="file" id="tplUploadInput" accept=".png,.jpg,.jpeg" style="display:none" onchange="uploadTemplate(this)"></div></div>
+      <div class="content"><div id="templateList"></div></div>
     </div>
     <div class="section" id="section-record">
       <div class="topbar"><h2>操作录制</h2></div>
@@ -250,7 +256,7 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
         </div>
         <h4 style="font-size:13px;color:var(--accent);margin:20px 0 12px;">调度设置</h4>
         <div class="form-row-3">
-          <div class="form-group"><label>调度类型</label><select id="fSchedType" onchange="onSchedTypeChange()"><option value="interval">固定周期</option><option value="cron">Cron 表达式</option><option value="oneshot">单次执行</option></select></div>
+          <div class="form-group"><label>调度类型</label><select id="fSchedType" onchange="onSchedTypeChange()"><option value="interval">固定周期</option><option value="cron">Cron 表达式</option><option value="oneshot">单次执行</option><option value="sentinel">哨兵模式</option></select></div>
           <div class="form-group" id="fIntervalGroup"><label>执行周期（秒）</label><input type="number" id="fInterval" value="20" min="1" step="1"></div>
           <div class="form-group" id="fCronGroup" style="display:none;"><label>Cron 表达式</label><input type="text" id="fCron" placeholder="*/5 * * * *"></div>
           <div class="form-group"><label>随机抖动（秒）</label><input type="number" id="fJitter" value="0" min="0" step="0.5"></div>
@@ -258,6 +264,18 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
         <div class="form-row">
           <div class="form-group"><label>启动延迟（秒）</label><input type="number" id="fDelay" value="0" min="0" step="1"></div>
           <div class="form-group"><label>周期间额外暂停（秒）</label><input type="number" id="fPause" value="0" min="0" step="0.5"></div>
+        </div>
+        <div id="fSentinelGroup" style="display:none;">
+          <h4 style="font-size:13px;color:var(--mauve);margin:20px 0 12px;">哨兵配置</h4>
+          <div class="form-row">
+            <div class="form-group"><label>模板图片</label><select id="fSentinelTemplate"><option value="">-- 请选择 --</option></select><div class="form-hint">从模板库选择匹配图片</div></div>
+            <div class="form-group"><label>扫描间隔（毫秒）</label><input type="number" id="fSentinelInterval" value="1000" min="100" step="100"><div class="form-hint">最小 100ms</div></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>匹配阈值</label><input type="range" id="fSentinelThreshold" min="0" max="1" step="0.05" value="0.8" oninput="document.getElementById('fThresholdVal').textContent=this.value" style="width:100%;accent-color:var(--accent);"><div class="form-hint">当前：<span id="fThresholdVal">0.8</span>（越高越严格）</div></div>
+            <div class="form-group"><label>扫描区域（可选）</label><input type="text" id="fSentinelRegion" placeholder="left,top,width,height（留空=全屏）"><div class="form-hint">例如 100,200,800,600</div></div>
+          </div>
+          <div id="fSentinelPreview" style="margin-top:8px;"></div>
         </div>
         <h4 style="font-size:13px;color:var(--accent);margin:20px 0 12px;">执行选项</h4>
         <div class="form-row-3">
@@ -293,7 +311,7 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
 
 <script>
 const API='';
-const SECTIONS=['tasks','commands','record','monitor','system'];
+const SECTIONS=['tasks','commands','templates','record','monitor','system'];
 const STATE_LABELS={running:'运行中',idle:'空闲',paused:'已暂停',error:'异常',completed:'已完成'};
 const ACTION_LABELS={start:'已启动',stop:'已停止',pause:'已暂停',resume:'已恢复',trigger:'已触发'};
 const KEY_OPTIONS=['tab','enter','esc','space','backspace','up','down','left','right','ctrl','shift','alt','f12',
@@ -304,6 +322,7 @@ const CMD_TYPES=[
   {value:'wait',label:'等待',icon:'&#9201;'},{value:'mouse_click',label:'鼠标点击',icon:'&#9755;'},
   {value:'mouse_move',label:'鼠标移动',icon:'&#10138;'},{value:'mouse_scroll',label:'鼠标滚轮',icon:'&#8693;'},
   {value:'file',label:'引用命令',icon:'&#128196;'},
+  {value:'move_to_match',label:'移到匹配位置',icon:'&#127919;'},
 ];
 
 let currentSection='tasks', editingTask=null, editingCmdFile=null, monitorTimer=null, monitorRunning=false;
@@ -320,7 +339,7 @@ async function api(path,opts={}){
 }
 
 /* ── Nav ── */
-const SECTION_META={tasks:{icon:'\u2630',label:'任务管理'},commands:{icon:'\u270E',label:'命令库'},record:{icon:'\u23FA',label:'操作录制'},monitor:{icon:'\u25C9',label:'屏幕监控'},system:{icon:'\u2699',label:'系统状态'}};
+const SECTION_META={tasks:{icon:'\u2630',label:'任务管理'},commands:{icon:'\u270E',label:'命令库'},templates:{icon:'\uD83D\uDDBC',label:'模板图片'},record:{icon:'\u23FA',label:'操作录制'},monitor:{icon:'\u25C9',label:'屏幕监控'},system:{icon:'\u2699',label:'系统状态'}};
 function showSection(name){
   currentSection=name;
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
@@ -331,7 +350,7 @@ function showSection(name){
   const m=SECTION_META[name];
   if(m){document.getElementById('mobileNavIcon').innerHTML=m.icon;document.getElementById('mobileNavLabel').textContent=m.label;}
   closeMobileNav();
-  if(name==='tasks')refreshTasks();if(name==='commands')refreshCmdFiles();if(name==='system')refreshSystem();
+  if(name==='tasks')refreshTasks();if(name==='commands')refreshCmdFiles();if(name==='templates')refreshTemplates();if(name==='system')refreshSystem();
 }
 function toggleMobileNav(){
   const dd=document.getElementById('mobileNavDropdown'), tb=document.getElementById('mobileNavToggle');
@@ -370,6 +389,7 @@ function cmdSummary(cmd){
     case 'mouse_move': return (cmd.absolute?'移动到':'相对移动')+` <span>(${cmd.x},${cmd.y})</span>`+(cmd.duration?` ${cmd.duration}s`:'');
     case 'mouse_scroll': return `滚轮 <span>${cmd.amount>0?'上':'下'} ${Math.abs(cmd.amount||0)}</span> 格`;
     case 'file': return `引用 <span>${esc(cmd.name||cmd.path||'')}</span>`;
+    case 'move_to_match': return `移到匹配位置`+(cmd.offset_x||cmd.offset_y?` 偏移(${cmd.offset_x||0},${cmd.offset_y||0})`:'')+((cmd.duration)?` ${cmd.duration}s`:'');
     default: return JSON.stringify(cmd);
   }
 }
@@ -401,6 +421,12 @@ function cmdFormHtml(type,existing,cid,ns,editIdx){
       const opts=cmdFiles.map(cf=>`<option value="${cf.name}"${(v.name===cf.name||v.path===cf.filename)?' selected':''}>${cf.name} (${cf.command_count}条)</option>`).join('');
       f=`<div class="form-group"><label>选择命令文件</label><select id="${cid}_f_name"><option value="">-- 请选择 --</option>${opts}</select></div>
         <div class="form-group"><label>或手动输入路径</label><input type="text" id="${cid}_f_path_manual" value="${v.path||''}" placeholder="commands/xxx.yaml"></div>`;break;
+    case 'move_to_match':
+      f=`<div class="form-hint" style="margin-bottom:10px;color:var(--mauve);">将鼠标移到哨兵任务匹配到的图样中心（仅在哨兵模式下有效）</div>
+        <div class="form-row"><div class="form-group"><label>X 偏移（可选）</label><input type="number" id="${cid}_f_ox" value="${v.offset_x||0}" step="1"></div>
+        <div class="form-group"><label>Y 偏移（可选）</label><input type="number" id="${cid}_f_oy" value="${v.offset_y||0}" step="1"></div></div>
+        <div class="form-row"><div class="form-group"><label>移动耗时（秒，可选）</label><input type="number" id="${cid}_f_dur" value="${v.duration||''}" min="0" step="0.1" placeholder="默认"></div>
+        <div class="form-group"><label>曲率（可选）</label><input type="number" id="${cid}_f_wob" value="${v.wobble||''}" min="0" step="0.05" placeholder="默认"></div></div>`;break;
   }
   const cancelFn=`document.getElementById('${cid}_addForm').innerHTML=''`;
   return `<div class="cmd-form"><div style="font-size:13px;font-weight:600;margin-bottom:10px;">${CMD_TYPES.find(c=>c.value===type)?.label||type}</div>${f}
@@ -419,6 +445,7 @@ function collectCmd(type,cid){
     case 'mouse_move': cmd.x=parseInt(g('x').value)||0;cmd.y=parseInt(g('y').value)||0; if(g('abs').value==='true')cmd.absolute=true; if(g('dur')?.value)cmd.duration=parseFloat(g('dur').value); if(g('wob')?.value)cmd.wobble=parseFloat(g('wob').value); break;
     case 'mouse_scroll': cmd.amount=parseInt(g('amt').value)||3; break;
     case 'file': {const n=g('name')?.value,p=g('path_manual')?.value; if(n)cmd.name=n; else if(p)cmd.path=p; else{toast('请选择或输入命令文件','error');return null;} break;}
+    case 'move_to_match': {const ox=parseInt(g('ox')?.value)||0,oy=parseInt(g('oy')?.value)||0; if(ox)cmd.offset_x=ox; if(oy)cmd.offset_y=oy; if(g('dur')?.value)cmd.duration=parseFloat(g('dur').value); if(g('wob')?.value)cmd.wobble=parseFloat(g('wob').value); break;}
   }
   return cmd;
 }
@@ -449,7 +476,7 @@ function renderTasks(){
   if(!tasks.length){el.innerHTML='<div class="empty-state"><div class="icon">&#9776;</div><p>暂无任务</p><button class="btn btn-primary" onclick="openTaskModal()">+ 创建第一个任务</button></div>';return;}
   el.innerHTML=tasks.map(t=>{
     const s=t.status,c=t.config,state=s.state||'idle',sl=STATE_LABELS[state]||state;
-    const sd=c.schedule.type==='cron'?c.schedule.cron_expression:c.schedule.type==='interval'?c.schedule.interval_sec+'秒'+(c.schedule.jitter_sec?' \u00b1'+c.schedule.jitter_sec+'秒':''):'单次执行';
+    const sd=c.schedule.type==='cron'?c.schedule.cron_expression:c.schedule.type==='interval'?c.schedule.interval_sec+'秒'+(c.schedule.jitter_sec?' \u00b1'+c.schedule.jitter_sec+'秒':''):c.schedule.type==='sentinel'?'哨兵 '+(c.sentinel?c.sentinel.scan_interval_ms+'ms':''):'单次执行';
     const lr=s.last_run?new Date(s.last_run).toLocaleTimeString():'-';
     return `<div class="task-card"><div class="task-status-dot ${state}"></div><div class="task-info">
       <div class="task-name">${esc(c.name)} <span class="badge badge-${state}">${sl}</span></div>
@@ -484,6 +511,13 @@ function openTaskModal(task=null){
     document.getElementById('fHold').value=c.options.default_hold_sec??0.1;
     document.getElementById('fMoveDur').value=c.options.mouse_move_default_duration_sec??0.8;
     document.getElementById('fWobble').value=c.options.mouse_move_default_wobble??0.1;
+    if(c.sentinel){
+      document.getElementById('fSentinelInterval').value=c.sentinel.scan_interval_ms||1000;
+      document.getElementById('fSentinelThreshold').value=c.sentinel.match_threshold||0.8;
+      document.getElementById('fThresholdVal').textContent=c.sentinel.match_threshold||0.8;
+      document.getElementById('fSentinelRegion').value=c.sentinel.scan_region?c.sentinel.scan_region.join(','):'';
+      loadTemplateOptions().then(()=>{document.getElementById('fSentinelTemplate').value=c.sentinel.template_image||'';});
+    }
     taskCommands=JSON.parse(JSON.stringify(c.commands||[]));
   } else {
     document.getElementById('fName').value='';document.getElementById('fName').disabled=false;
@@ -505,7 +539,13 @@ function switchTab(btn,tabId){
   document.getElementById('tabYaml').style.display=tabId==='tabYaml'?'block':'none';
   if(tabId==='tabYaml')document.getElementById('fYamlFull').value=buildYamlFromForm();
 }
-function onSchedTypeChange(){const t=document.getElementById('fSchedType').value;document.getElementById('fIntervalGroup').style.display=t==='interval'?'':'none';document.getElementById('fCronGroup').style.display=t==='cron'?'':'none';}
+function onSchedTypeChange(){
+  const t=document.getElementById('fSchedType').value;
+  document.getElementById('fIntervalGroup').style.display=t==='interval'?'':'none';
+  document.getElementById('fCronGroup').style.display=t==='cron'?'':'none';
+  document.getElementById('fSentinelGroup').style.display=t==='sentinel'?'':'none';
+  if(t==='sentinel')loadTemplateOptions();
+}
 
 async function saveTask(){
   const yamlVis=document.getElementById('tabYaml').style.display!=='none';let payload;
@@ -527,7 +567,19 @@ function buildPayloadFromForm(){
   if(st==='cron')schedule.cron_expression=document.getElementById('fCron').value.trim()||'*/5 * * * *';
   const options={default_hold_sec:parseFloat(document.getElementById('fHold').value)||0.1,pause_between_cycles_sec:parseFloat(document.getElementById('fPause').value)||0,
     mouse_move_default_duration_sec:parseFloat(document.getElementById('fMoveDur').value)||0.8,mouse_move_default_wobble:parseFloat(document.getElementById('fWobble').value)||0.1};
-  return{name,schedule,options,commands:taskCommands,command_file:null};
+  const payload={name,schedule,options,commands:taskCommands,command_file:null};
+  if(st==='sentinel'){
+    const tpl=document.getElementById('fSentinelTemplate').value;
+    if(!tpl){toast('请选择模板图片','error');return null;}
+    const region=document.getElementById('fSentinelRegion').value.trim();
+    payload.sentinel={
+      template_image:tpl,
+      scan_interval_ms:parseInt(document.getElementById('fSentinelInterval').value)||1000,
+      match_threshold:parseFloat(document.getElementById('fSentinelThreshold').value)||0.8,
+    };
+    if(region){const parts=region.split(',').map(s=>parseInt(s.trim()));if(parts.length===4&&parts.every(n=>!isNaN(n)))payload.sentinel.scan_region=parts;}
+  }
+  return payload;
 }
 function editTask(n){const t=tasks.find(t=>t.config.name===n);if(t)openTaskModal(t);}
 
@@ -604,6 +656,10 @@ function taskToYaml(c){
   if(c.schedule.jitter_sec)y+=`  jitter_sec: ${c.schedule.jitter_sec}\n`;
   if(c.schedule.start_delay_sec)y+=`  start_delay_sec: ${c.schedule.start_delay_sec}\n`;
   y+=`\noptions:\n  default_hold_sec: ${c.options.default_hold_sec}\n  pause_between_cycles_sec: ${c.options.pause_between_cycles_sec}\n  mouse_move_default_duration_sec: ${c.options.mouse_move_default_duration_sec}\n  mouse_move_default_wobble: ${c.options.mouse_move_default_wobble}\n  compensate_queue_wait: ${c.options.compensate_queue_wait!==false}\n`;
+  if(c.sentinel){
+    y+=`\nsentinel:\n  template_image: ${c.sentinel.template_image}\n  scan_interval_ms: ${c.sentinel.scan_interval_ms}\n  match_threshold: ${c.sentinel.match_threshold}\n`;
+    if(c.sentinel.scan_region)y+=`  scan_region: [${c.sentinel.scan_region.join(', ')}]\n`;
+  }
   if(c.commands?.length)y+=`\ncommands:\n`+commandsToYaml(c.commands)+'\n';return y;
 }
 function buildYamlFromForm(){const p=buildPayloadFromForm();if(!p)return'';return taskToYaml({...p,options:p.options||{},schedule:p.schedule||{type:'interval'}});}
@@ -617,6 +673,61 @@ function parseSimpleYaml(text){
       if(val===''||val==='|'){currentObj[key]={};stack.push({obj:currentObj[key],indent:indent});}else currentObj[key]=pv(val);}}return result;
 }
 function pv(v){if(v==='true')return true;if(v==='false')return false;if(v==='null'||v==='')return null;if(/^-?\d+$/.test(v))return parseInt(v);if(/^-?\d+\.\d+$/.test(v))return parseFloat(v);if(v.startsWith('[')&&v.endsWith(']'))return v.slice(1,-1).split(',').map(s=>pv(s.trim()));if((v.startsWith('"')&&v.endsWith('"'))||(v.startsWith("'")&&v.endsWith("'")))return v.slice(1,-1);return v;}
+
+/* ══════════════════════════════════════════
+   ── Templates ──
+   ══════════════════════════════════════════ */
+
+let templates=[];
+async function refreshTemplates(){try{templates=await api('/api/templates');renderTemplates();}catch(e){}}
+function renderTemplates(){
+  const el=document.getElementById('templateList');
+  if(!templates.length){el.innerHTML='<div class="empty-state"><div class="icon">&#128444;</div><p>暂无模板图片</p><button class="btn btn-primary" onclick="document.getElementById(\'tplUploadInput\').click()">+ 上传模板</button></div>';return;}
+  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">'+templates.map(t=>`<div class="stat-card" style="padding:12px;text-align:center;">
+    <div style="height:120px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;overflow:hidden;border-radius:4px;background:var(--bg);"><img src="${API}/api/templates/${encodeURIComponent(t.name)}" style="max-width:100%;max-height:120px;object-fit:contain;"></div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:2px;">${esc(t.name)}</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">${t.filename} · ${(t.size/1024).toFixed(1)}KB</div>
+    <div style="display:flex;gap:6px;justify-content:center;">
+      <button class="btn btn-sm btn-success" onclick="testTemplate('${esc(t.name)}')">测试匹配</button>
+      <button class="btn btn-sm btn-danger btn-icon" onclick="deleteTemplate('${esc(t.name)}')">&times;</button>
+    </div>
+  </div>`).join('')+'</div>';
+}
+async function uploadTemplate(input){
+  if(!input.files||!input.files[0])return;
+  const file=input.files[0];
+  const fd=new FormData();fd.append('file',file);
+  try{const r=await fetch(API+'/api/templates',{method:'POST',body:fd});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.detail||r.statusText);}
+    const d=await r.json();toast(`模板"${d.filename}"已上传`,'success');refreshTemplates();
+  }catch(e){toast('上传失败：'+e.message,'error');}
+  input.value='';
+}
+async function deleteTemplate(n){if(!confirm(`确认删除模板"${n}"？`))return;try{await api(`/api/templates/${encodeURIComponent(n)}`,{method:'DELETE'});toast(`模板"${n}" 已删除`,'success');refreshTemplates();}catch(e){}}
+async function testTemplate(n){
+  toast('正在测试匹配...','info');
+  try{
+    const r=await api(`/api/templates/${encodeURIComponent(n)}/test`,{method:'POST'});
+    if(r.matched){
+      toast(`匹配成功！置信度=${r.confidence} 中心=(${r.center_x},${r.center_y})`,'success');
+    }else{
+      toast('未匹配到目标图样','error');
+    }
+    // Show annotated image in a modal-like overlay
+    const ov=document.createElement('div');ov.className='modal-overlay';ov.onclick=function(e){if(e.target===this)this.remove();};
+    ov.innerHTML=`<div class="modal" style="width:auto;max-width:95vw;"><div class="modal-header"><h3>匹配测试 — ${esc(n)}</h3><button class="close-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button></div>
+      <div class="modal-body" style="text-align:center;"><img src="data:image/png;base64,${r.annotated_image}" style="max-width:100%;border-radius:4px;">
+      <div style="margin-top:12px;font-size:13px;color:var(--text2);">${r.matched?`<span style="color:var(--green);">匹配成功</span> 置信度=${r.confidence} 位置=(${r.x},${r.y}) 中心=(${r.center_x},${r.center_y})`:'<span style="color:var(--red);">未匹配</span>'}</div></div></div>`;
+    document.body.appendChild(ov);
+  }catch(e){}
+}
+async function loadTemplateOptions(){
+  try{const tpls=await api('/api/templates');
+    const sel=document.getElementById('fSentinelTemplate');const cur=sel.value;
+    sel.innerHTML='<option value="">-- 请选择 --</option>'+tpls.map(t=>`<option value="${esc(t.filename)}">${esc(t.name)} (${t.filename})</option>`).join('');
+    if(cur)sel.value=cur;
+  }catch(e){}
+}
 
 /* ══════════════════════════════════════════
    ── Recording ──

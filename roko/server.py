@@ -73,8 +73,14 @@ def start_server(config_path: Path = None) -> None:
     if not commands_dir.is_absolute():
         commands_dir = config_dir / commands_dir
     commands_dir.mkdir(parents=True, exist_ok=True)
+    templates_dir = Path(cfg.templates_dir)
+    if not templates_dir.is_absolute():
+        templates_dir = config_dir / templates_dir
+    templates_dir.mkdir(parents=True, exist_ok=True)
     task_manager = TaskManager(kbd, mouse, config_dir=config_dir, tasks_dir=tasks_dir,
-                               commands_dir=commands_dir)
+                               commands_dir=commands_dir,
+                               screen_capture=screen_capture,
+                               templates_dir=templates_dir)
 
     # Scan command files from commands_dir
     cmd_count = 0
@@ -103,6 +109,7 @@ def start_server(config_path: Path = None) -> None:
     app_state.started_at = datetime.now()
     app_state.config_dir = config_dir
     app_state.commands_dir = commands_dir
+    app_state.templates_dir = templates_dir
 
     app = create_app()
 

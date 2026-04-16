@@ -23,6 +23,7 @@ class AppState:
         self.config_dir: Path = Path(".")
         self.commands_dir: Optional[Path] = None
         self.dll_path: Optional[str] = None  # Resolved Interception DLL path
+        self.templates_dir: Optional[Path] = None
 
 
 # Global singleton

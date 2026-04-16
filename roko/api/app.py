@@ -13,6 +13,7 @@ from .routes_record import router as record_router
 from .routes_screen import router as screen_router
 from .routes_system import router as system_router
 from .routes_tasks import router as tasks_router
+from .routes_templates import router as templates_router
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
     app.include_router(record_router)
     app.include_router(screen_router)
     app.include_router(system_router)
+    app.include_router(templates_router)
 
     # Serve the web UI
     @app.get("/", include_in_schema=False)
