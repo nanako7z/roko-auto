@@ -25,9 +25,9 @@ class TaskManager:
         self._tasks: Dict[str, TaskRunner] = {}
         self._lock = threading.RLock()
 
-    def add_task(self, config: TaskConfig, auto_start: bool = False,
+    def add_task(self, config: TaskConfig,
                  persist: bool = False) -> TaskStatus:
-        """Register a new task. Optionally start it immediately and persist to disk."""
+        """Register a new task. Optionally persist to disk. Tasks always start stopped."""
         with self._lock:
             if config.name in self._tasks:
                 raise ValueError(f"Task '{config.name}' already exists")
@@ -35,8 +35,6 @@ class TaskManager:
             self._tasks[config.name] = runner
             if persist:
                 self._save_task_file(config)
-            if auto_start and config.enabled:
-                runner.start()
             return runner.status
 
     def remove_task(self, name: str) -> None:
@@ -66,7 +64,7 @@ class TaskManager:
         with self._lock:
             self._tasks[config.name] = new_runner
             self._save_task_file(config)
-            if was_running and config.enabled:
+            if was_running:
                 new_runner.start()
         return new_runner.status
 
@@ -149,11 +147,11 @@ class TaskManager:
                 if runner.is_running:
                     runner.stop()
 
-    def start_all_enabled(self) -> None:
-        """Start all enabled tasks."""
+    def start_all(self) -> None:
+        """Start all tasks."""
         with self._lock:
             for runner in self._tasks.values():
-                if runner.config.enabled and not runner.is_running:
+                if not runner.is_running:
                     runner.start()
 
     def _get_runner(self, name: str) -> TaskRunner:

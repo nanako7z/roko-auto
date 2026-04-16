@@ -43,3 +43,9 @@ htmlcov/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Runtime task and command files (keep directories via .gitkeep)
+tasks/*
+!tasks/.gitkeep
+commands/*
+!commands/.gitkeep

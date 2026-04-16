@@ -62,7 +62,6 @@ class TaskOptions(BaseModel):
 
 class TaskConfig(BaseModel):
     name: str
-    enabled: bool = True
     schedule: ScheduleConfig
     options: TaskOptions = Field(default_factory=TaskOptions)
     commands: List[Dict[str, Any]] = Field(default_factory=list)

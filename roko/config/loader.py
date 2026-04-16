@@ -71,7 +71,6 @@ def migrate_legacy_config(data: Dict[str, Any], config_path: Path) -> TaskConfig
 
     return TaskConfig(
         name=name,
-        enabled=True,
         schedule=schedule,
         options=options,
         commands=commands,

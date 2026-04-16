@@ -6,33 +6,17 @@
 <title>roko-auto</title>
 <style>
 :root {
-  --bg: #0f1117;
-  --bg2: #161822;
-  --bg3: #1e2030;
-  --border: #2e3148;
-  --text: #cdd6f4;
-  --text2: #a6adc8;
-  --accent: #89b4fa;
-  --accent2: #74c7ec;
-  --green: #a6e3a1;
-  --red: #f38ba8;
-  --yellow: #f9e2af;
-  --orange: #fab387;
-  --mauve: #cba6f7;
-  --surface: #313244;
-  --radius: 8px;
+  --bg: #0f1117; --bg2: #161822; --bg3: #1e2030; --border: #2e3148;
+  --text: #cdd6f4; --text2: #a6adc8; --accent: #89b4fa; --accent2: #74c7ec;
+  --green: #a6e3a1; --red: #f38ba8; --yellow: #f9e2af; --orange: #fab387;
+  --mauve: #cba6f7; --surface: #313244; --radius: 8px;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif; background:var(--bg); color:var(--text); line-height:1.5; min-height:100vh; }
-button { cursor:pointer; font-family:inherit; }
-input,textarea,select { font-family:inherit; }
-
-/* Layout */
+body { font-family: -apple-system,'Segoe UI','Microsoft YaHei',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; min-height:100vh; }
+button { cursor:pointer; font-family:inherit; } input,textarea,select { font-family:inherit; }
 .app { display:flex; height:100vh; }
 .sidebar { width:260px; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
 .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-
-/* Sidebar */
 .sidebar-header { padding:20px; border-bottom:1px solid var(--border); }
 .sidebar-header h1 { font-size:18px; font-weight:600; color:var(--accent); }
 .sidebar-header .subtitle { font-size:12px; color:var(--text2); margin-top:2px; }
@@ -43,18 +27,11 @@ input,textarea,select { font-family:inherit; }
 .nav-item .icon { font-size:18px; width:24px; text-align:center; flex-shrink:0; }
 .sidebar-status { padding:16px; border-top:1px solid var(--border); font-size:12px; color:var(--text2); }
 .sidebar-status .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
-.dot-green { background:var(--green); }
-.dot-red { background:var(--red); }
-
-/* Top bar */
+.dot-green { background:var(--green); } .dot-red { background:var(--red); }
 .topbar { height:56px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 24px; background:var(--bg2); flex-shrink:0; }
 .topbar h2 { font-size:16px; font-weight:600; }
 .topbar-actions { display:flex; gap:8px; }
-
-/* Content */
 .content { flex:1; overflow-y:auto; padding:24px; }
-
-/* Buttons */
 .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:var(--radius); font-size:13px; font-weight:500; border:1px solid var(--border); background:var(--bg3); color:var(--text); transition:all .15s; }
 .btn:hover { background:var(--surface); border-color:var(--text2); }
 .btn-primary { background:var(--accent); color:var(--bg); border-color:var(--accent); }
@@ -67,13 +44,6 @@ input,textarea,select { font-family:inherit; }
 .btn-warning:hover { opacity:.85; }
 .btn-sm { padding:5px 10px; font-size:12px; }
 .btn-icon { padding:6px 8px; }
-
-/* Cards */
-.card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); }
-.card-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
-.card-body { padding:20px; }
-
-/* Task list */
 .task-list { display:flex; flex-direction:column; gap:12px; }
 .task-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:16px 20px; display:flex; align-items:center; gap:16px; transition:all .15s; }
 .task-card:hover { border-color:var(--text2); }
@@ -87,827 +57,481 @@ input,textarea,select { font-family:inherit; }
 .task-name { font-size:15px; font-weight:600; }
 .task-meta { font-size:12px; color:var(--text2); margin-top:4px; display:flex; gap:16px; flex-wrap:wrap; }
 .task-actions { display:flex; gap:6px; flex-shrink:0; }
-
-/* Badge */
 .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
 .badge-running { background:rgba(166,227,161,.15); color:var(--green); }
 .badge-idle { background:rgba(166,172,200,.1); color:var(--text2); }
 .badge-paused { background:rgba(249,226,175,.15); color:var(--yellow); }
 .badge-error { background:rgba(243,139,168,.15); color:var(--red); }
 .badge-completed { background:rgba(137,180,250,.15); color:var(--accent); }
-
-/* Forms */
 .form-group { margin-bottom:16px; }
 .form-group label { display:block; font-size:13px; font-weight:500; color:var(--text2); margin-bottom:6px; }
 .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 .form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
-input[type="text"], input[type="number"], select, textarea {
-  width:100%; padding:9px 12px; background:var(--bg); border:1px solid var(--border);
-  border-radius:var(--radius); color:var(--text); font-size:14px; outline:none; transition:border .15s;
-}
-input:focus, select:focus, textarea:focus { border-color:var(--accent); }
+input[type="text"],input[type="number"],select,textarea { width:100%; padding:9px 12px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); font-size:14px; outline:none; transition:border .15s; }
+input:focus,select:focus,textarea:focus { border-color:var(--accent); }
 textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira Code',monospace; font-size:13px; }
 .form-hint { font-size:11px; color:var(--text2); margin-top:4px; }
-
-/* Modal */
 .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.6); z-index:100; display:flex; align-items:center; justify-content:center; }
-.modal { background:var(--bg2); border:1px solid var(--border); border-radius:12px; width:680px; max-width:90vw; max-height:90vh; display:flex; flex-direction:column; }
+.modal { background:var(--bg2); border:1px solid var(--border); border-radius:12px; width:720px; max-width:92vw; max-height:90vh; display:flex; flex-direction:column; }
 .modal-header { padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
 .modal-header h3 { font-size:16px; }
 .modal-body { padding:24px; overflow-y:auto; flex:1; }
 .modal-footer { padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
 .close-btn { background:none; border:none; color:var(--text2); font-size:20px; cursor:pointer; padding:4px; }
 .close-btn:hover { color:var(--text); }
-
-/* Screen monitor */
 .monitor-container { text-align:center; }
-.monitor-frame { display:inline-block; border:2px solid var(--border); border-radius:var(--radius); overflow:hidden; background:var(--bg); position:relative; }
+.monitor-frame { display:inline-block; border:2px solid var(--border); border-radius:var(--radius); overflow:hidden; background:var(--bg); }
 .monitor-frame img { max-width:100%; height:auto; display:block; }
 .monitor-controls { margin-top:16px; display:flex; align-items:center; justify-content:center; gap:12px; }
 .monitor-status { font-size:12px; color:var(--text2); }
-
-/* System info */
 .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
 .stat-card { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:20px; }
 .stat-label { font-size:12px; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; }
 .stat-value { font-size:28px; font-weight:700; margin-top:4px; }
-.stat-value.green { color:var(--green); }
-.stat-value.accent { color:var(--accent); }
-.stat-value.orange { color:var(--orange); }
-
-/* Empty state */
+.stat-value.green { color:var(--green); } .stat-value.accent { color:var(--accent); } .stat-value.orange { color:var(--orange); }
 .empty-state { text-align:center; padding:60px 20px; color:var(--text2); }
 .empty-state .icon { font-size:48px; margin-bottom:16px; opacity:.5; }
 .empty-state p { margin-bottom:20px; }
-
-/* Toast */
 .toast-container { position:fixed; top:20px; right:20px; z-index:200; display:flex; flex-direction:column; gap:8px; }
 .toast { padding:12px 20px; border-radius:var(--radius); font-size:13px; animation:slideIn .3s; max-width:400px; }
 .toast-success { background:rgba(166,227,161,.15); border:1px solid var(--green); color:var(--green); }
 .toast-error { background:rgba(243,139,168,.15); border:1px solid var(--red); color:var(--red); }
 .toast-info { background:rgba(137,180,250,.15); border:1px solid var(--accent); color:var(--accent); }
 @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
-
-/* Tab bar */
 .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:20px; }
 .tab { padding:10px 20px; font-size:13px; color:var(--text2); cursor:pointer; border-bottom:2px solid transparent; transition:all .15s; background:none; border-top:none; border-left:none; border-right:none; }
-.tab:hover { color:var(--text); }
-.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
-
-/* Scrollbar */
-::-webkit-scrollbar { width:6px; }
-::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-::-webkit-scrollbar-thumb:hover { background:var(--text2); }
-
-/* Hide sections */
-.section { display:none; }
-.section.active { display:block; }
-
-/* YAML preview */
-.yaml-preview { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:16px; font-family:'Cascadia Code','Fira Code',monospace; font-size:13px; white-space:pre-wrap; word-break:break-all; max-height:400px; overflow-y:auto; color:var(--text2); line-height:1.6; }
-
-/* Responsive */
-@media(max-width:768px) {
-  .sidebar { width:60px; }
-  .sidebar-header h1, .sidebar-header .subtitle, .nav-item span:not(.icon), .sidebar-status { display:none; }
-  .nav-item { justify-content:center; padding:12px; }
-  .form-row, .form-row-3 { grid-template-columns:1fr; }
-}
+.tab:hover { color:var(--text); } .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+.section { display:none; } .section.active { display:block; }
+/* Command editor */
+.cmd-list { display:flex; flex-direction:column; gap:6px; }
+.cmd-item { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; display:flex; align-items:center; gap:10px; }
+.cmd-item:hover { border-color:var(--text2); }
+.cmd-badge { padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; background:var(--surface); color:var(--accent); white-space:nowrap; min-width:64px; text-align:center; }
+.cmd-detail { flex:1; font-size:13px; color:var(--text2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cmd-detail span { color:var(--text); }
+.cmd-actions { display:flex; gap:2px; flex-shrink:0; }
+.cmd-actions button { background:none; border:none; color:var(--text2); font-size:14px; padding:2px 5px; cursor:pointer; border-radius:4px; }
+.cmd-actions button:hover { background:var(--surface); color:var(--text); }
+.add-cmd-types { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.add-cmd-types button { padding:6px 14px; border-radius:var(--radius); font-size:12px; border:1px solid var(--border); background:var(--bg3); color:var(--text); }
+.add-cmd-types button:hover { border-color:var(--accent); color:var(--accent); }
+.cmd-form { background:var(--bg); border:1px solid var(--accent); border-radius:var(--radius); padding:14px; margin-top:8px; }
+.cmd-form .form-group { margin-bottom:8px; }
+.cmd-form label { font-size:12px; }
+.cmd-form-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+.cmd-file-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; display:flex; align-items:center; gap:14px; margin-bottom:10px; }
+.cmd-file-card:hover { border-color:var(--text2); }
+.cmd-file-info { flex:1; }
+.cmd-file-name { font-size:15px; font-weight:600; }
+.cmd-file-meta { font-size:12px; color:var(--text2); margin-top:2px; }
+@media(max-width:768px) { .sidebar { width:60px; } .sidebar-header h1,.sidebar-header .subtitle,.nav-item span:not(.icon),.sidebar-status { display:none; } .nav-item { justify-content:center; padding:12px; } .form-row,.form-row-3 { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
-
 <div class="app">
-  <!-- Sidebar -->
   <div class="sidebar">
-    <div class="sidebar-header">
-      <h1>roko-auto</h1>
-      <div class="subtitle">自动化调度平台</div>
-    </div>
-    <nav class="sidebar-nav">
-      <button class="nav-item active" onclick="showSection('tasks')">
-        <span class="icon">&#9776;</span><span>任务管理</span>
-      </button>
-      <button class="nav-item" onclick="showSection('monitor')">
-        <span class="icon">&#9673;</span><span>屏幕监控</span>
-      </button>
-      <button class="nav-item" onclick="showSection('system')">
-        <span class="icon">&#9881;</span><span>系统状态</span>
-      </button>
+    <div class="sidebar-header"><h1>roko-auto</h1><div class="subtitle">自动化调度平台</div></div>
+    <nav class="sidebar-nav" id="sidebarNav">
+      <button class="nav-item active" onclick="showSection('tasks')"><span class="icon">&#9776;</span><span>任务管理</span></button>
+      <button class="nav-item" onclick="showSection('commands')"><span class="icon">&#9998;</span><span>命令库</span></button>
+      <button class="nav-item" onclick="showSection('monitor')"><span class="icon">&#9673;</span><span>屏幕监控</span></button>
+      <button class="nav-item" onclick="showSection('system')"><span class="icon">&#9881;</span><span>系统状态</span></button>
     </nav>
-    <div class="sidebar-status" id="sidebarStatus">
-      <span class="dot dot-green"></span>连接中...
-    </div>
+    <div class="sidebar-status" id="sidebarStatus"><span class="dot dot-green"></span>连接中...</div>
   </div>
-
-  <!-- Main -->
   <div class="main">
-
-    <!-- ===== Tasks Section ===== -->
     <div class="section active" id="section-tasks">
-      <div class="topbar">
-        <h2>任务管理</h2>
-        <div class="topbar-actions">
-          <button class="btn btn-sm" onclick="refreshTasks()">刷新</button>
-          <button class="btn btn-sm btn-primary" onclick="openTaskModal()">+ 新建任务</button>
-        </div>
-      </div>
-      <div class="content">
-        <div id="taskList" class="task-list"></div>
-      </div>
+      <div class="topbar"><h2>任务管理</h2><div class="topbar-actions"><button class="btn btn-sm" onclick="refreshTasks()">刷新</button><button class="btn btn-sm btn-primary" onclick="openTaskModal()">+ 新建任务</button></div></div>
+      <div class="content"><div id="taskList" class="task-list"></div></div>
     </div>
-
-    <!-- ===== Monitor Section ===== -->
+    <div class="section" id="section-commands">
+      <div class="topbar"><h2>命令库</h2><div class="topbar-actions"><button class="btn btn-sm" onclick="refreshCmdFiles()">刷新</button><button class="btn btn-sm btn-primary" onclick="openCmdFileModal()">+ 新建命令</button></div></div>
+      <div class="content"><div id="cmdFileList"></div></div>
+    </div>
     <div class="section" id="section-monitor">
-      <div class="topbar">
-        <h2>屏幕监控</h2>
-        <div class="topbar-actions">
-          <button class="btn btn-sm" id="monitorToggle" onclick="toggleMonitor()">开始</button>
-        </div>
-      </div>
-      <div class="content">
-        <div class="monitor-container">
-          <div class="monitor-frame">
-            <img id="monitorImg" src="" alt="屏幕截图将显示在此处"
-                 style="min-width:640px;min-height:360px;background:var(--bg);">
-          </div>
-          <div class="monitor-controls">
-            <label style="font-size:13px;color:var(--text2);">
-              刷新间隔：
-              <select id="monitorInterval" style="width:auto;padding:4px 8px;font-size:12px;">
-                <option value="1000">1 秒</option>
-                <option value="2000" selected>2 秒</option>
-                <option value="5000">5 秒</option>
-                <option value="10000">10 秒</option>
-              </select>
-            </label>
-            <span class="monitor-status" id="monitorStatus">已停止</span>
-          </div>
-        </div>
-      </div>
+      <div class="topbar"><h2>屏幕监控</h2><div class="topbar-actions"><button class="btn btn-sm" id="monitorToggle" onclick="toggleMonitor()">开始</button></div></div>
+      <div class="content"><div class="monitor-container"><div class="monitor-frame"><img id="monitorImg" src="" alt="屏幕截图" style="min-width:640px;min-height:360px;background:var(--bg);"></div><div class="monitor-controls"><label style="font-size:13px;color:var(--text2);">刷新间隔：<select id="monitorInterval" style="width:auto;padding:4px 8px;font-size:12px;"><option value="1000">1 秒</option><option value="2000" selected>2 秒</option><option value="5000">5 秒</option><option value="10000">10 秒</option></select></label><span class="monitor-status" id="monitorStatus">已停止</span></div></div></div>
     </div>
-
-    <!-- ===== System Section ===== -->
     <div class="section" id="section-system">
-      <div class="topbar">
-        <h2>系统状态</h2>
-        <div class="topbar-actions">
-          <button class="btn btn-sm" onclick="refreshSystem()">刷新</button>
-        </div>
-      </div>
-      <div class="content">
-        <div class="stats-grid" id="systemStats"></div>
-      </div>
+      <div class="topbar"><h2>系统状态</h2><div class="topbar-actions"><button class="btn btn-sm" onclick="refreshSystem()">刷新</button></div></div>
+      <div class="content"><div class="stats-grid" id="systemStats"></div></div>
     </div>
-
   </div>
 </div>
 
 <!-- Task Modal -->
 <div class="modal-overlay" id="taskModal" style="display:none;" onclick="if(event.target===this)closeTaskModal()">
   <div class="modal">
-    <div class="modal-header">
-      <h3 id="taskModalTitle">新建任务</h3>
-      <button class="close-btn" onclick="closeTaskModal()">&times;</button>
-    </div>
+    <div class="modal-header"><h3 id="taskModalTitle">新建任务</h3><button class="close-btn" onclick="closeTaskModal()">&times;</button></div>
     <div class="modal-body">
-      <div class="tabs">
-        <button class="tab active" onclick="switchTab(this,'tabForm')">表单模式</button>
-        <button class="tab" onclick="switchTab(this,'tabYaml')">YAML 模式</button>
-      </div>
-
-      <!-- Form tab -->
+      <div class="tabs"><button class="tab active" onclick="switchTab(this,'tabForm')">表单模式</button><button class="tab" onclick="switchTab(this,'tabYaml')">YAML 模式</button></div>
       <div id="tabForm">
         <div class="form-row">
-          <div class="form-group">
-            <label>任务名称</label>
-            <input type="text" id="fName" placeholder="例如 keep_alive">
-          </div>
-          <div class="form-group">
-            <label>是否启用</label>
-            <select id="fEnabled">
-              <option value="true">是</option>
-              <option value="false">否</option>
-            </select>
-          </div>
+          <div class="form-group"><label>任务名称</label><input type="text" id="fName" placeholder="例如 keep_alive"></div>
+          <div class="form-group"><label>是否启用</label><select id="fEnabled"><option value="true">是</option><option value="false">否</option></select></div>
         </div>
-
         <h4 style="font-size:13px;color:var(--accent);margin:20px 0 12px;">调度设置</h4>
         <div class="form-row-3">
-          <div class="form-group">
-            <label>调度类型</label>
-            <select id="fSchedType" onchange="onSchedTypeChange()">
-              <option value="interval">固定周期</option>
-              <option value="cron">Cron 表达式</option>
-              <option value="oneshot">单次执行</option>
-            </select>
-          </div>
-          <div class="form-group" id="fIntervalGroup">
-            <label>执行周期（秒）</label>
-            <input type="number" id="fInterval" value="20" min="1" step="1">
-          </div>
-          <div class="form-group" id="fCronGroup" style="display:none;">
-            <label>Cron 表达式</label>
-            <input type="text" id="fCron" placeholder="*/5 * * * *">
-          </div>
-          <div class="form-group">
-            <label>随机抖动（秒）</label>
-            <input type="number" id="fJitter" value="0" min="0" step="0.5">
-          </div>
+          <div class="form-group"><label>调度类型</label><select id="fSchedType" onchange="onSchedTypeChange()"><option value="interval">固定周期</option><option value="cron">Cron 表达式</option><option value="oneshot">单次执行</option></select></div>
+          <div class="form-group" id="fIntervalGroup"><label>执行周期（秒）</label><input type="number" id="fInterval" value="20" min="1" step="1"></div>
+          <div class="form-group" id="fCronGroup" style="display:none;"><label>Cron 表达式</label><input type="text" id="fCron" placeholder="*/5 * * * *"></div>
+          <div class="form-group"><label>随机抖动（秒）</label><input type="number" id="fJitter" value="0" min="0" step="0.5"></div>
         </div>
         <div class="form-row">
-          <div class="form-group">
-            <label>启动延迟（秒）</label>
-            <input type="number" id="fDelay" value="0" min="0" step="1">
-          </div>
-          <div class="form-group">
-            <label>周期间额外暂停（秒）</label>
-            <input type="number" id="fPause" value="0" min="0" step="0.5">
-          </div>
+          <div class="form-group"><label>启动延迟（秒）</label><input type="number" id="fDelay" value="0" min="0" step="1"></div>
+          <div class="form-group"><label>周期间额外暂停（秒）</label><input type="number" id="fPause" value="0" min="0" step="0.5"></div>
         </div>
-
         <h4 style="font-size:13px;color:var(--accent);margin:20px 0 12px;">执行选项</h4>
         <div class="form-row-3">
-          <div class="form-group">
-            <label>按键保持时长（秒）</label>
-            <input type="number" id="fHold" value="0.1" min="0" step="0.01">
-          </div>
-          <div class="form-group">
-            <label>鼠标移动耗时（秒）</label>
-            <input type="number" id="fMoveDur" value="0.8" min="0" step="0.1">
-          </div>
-          <div class="form-group">
-            <label>鼠标移动曲率</label>
-            <input type="number" id="fWobble" value="0.1" min="0" step="0.05">
-          </div>
+          <div class="form-group"><label>按键保持时长（秒）</label><input type="number" id="fHold" value="0.1" min="0" step="0.01"></div>
+          <div class="form-group"><label>鼠标移动耗时（秒）</label><input type="number" id="fMoveDur" value="0.8" min="0" step="0.1"></div>
+          <div class="form-group"><label>鼠标移动曲率</label><input type="number" id="fWobble" value="0.1" min="0" step="0.05"></div>
         </div>
-
         <h4 style="font-size:13px;color:var(--accent);margin:20px 0 12px;">命令配置</h4>
-        <div class="form-group">
-          <label>命令文件（可选，填写后优先使用文件中的命令）</label>
-          <input type="text" id="fCmdFile" placeholder="commands/my_sequence.yaml">
-        </div>
-        <div class="form-group">
-          <label>命令列表（YAML 格式）</label>
-          <textarea id="fCommands" rows="8" placeholder="- type: key
-  key: tab
-- type: wait
-  sec: 2"></textarea>
-          <div class="form-hint">YAML 格式，每项必须包含 <code>type</code> 字段。支持类型：key、hotkey、wait、mouse_click、mouse_move、mouse_scroll、file</div>
-        </div>
+        <div id="cmdEditor"></div>
       </div>
-
-      <!-- YAML tab -->
       <div id="tabYaml" style="display:none;">
-        <div class="form-group">
-          <label>完整任务配置（YAML）</label>
-          <textarea id="fYamlFull" rows="20" placeholder="name: my_task
-enabled: true
-schedule:
-  type: interval
-  interval_sec: 20
-commands:
-  - type: key
-    key: tab"></textarea>
-          <div class="form-hint">在此粘贴或直接编辑完整的任务配置 YAML</div>
-        </div>
+        <div class="form-group"><label>完整任务配置（YAML）</label><textarea id="fYamlFull" rows="20" placeholder="name: my_task&#10;enabled: true&#10;schedule:&#10;  type: interval&#10;  interval_sec: 20&#10;commands:&#10;  - type: key&#10;    key: tab"></textarea><div class="form-hint">在此粘贴或直接编辑完整的任务配置 YAML</div></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeTaskModal()">取消</button>
-      <button class="btn btn-primary" id="taskModalSave" onclick="saveTask()">创建</button>
-    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeTaskModal()">取消</button><button class="btn btn-primary" id="taskModalSave" onclick="saveTask()">创建</button></div>
   </div>
 </div>
 
-<!-- Toast container -->
+<!-- Command File Modal -->
+<div class="modal-overlay" id="cmdFileModal" style="display:none;" onclick="if(event.target===this)closeCmdFileModal()">
+  <div class="modal">
+    <div class="modal-header"><h3 id="cmdFileModalTitle">新建命令</h3><button class="close-btn" onclick="closeCmdFileModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>命令名称</label><input type="text" id="cfName" placeholder="例如 login_sequence"></div>
+      <h4 style="font-size:13px;color:var(--accent);margin:16px 0 12px;">命令列表</h4>
+      <div id="cmdFileEditor"></div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeCmdFileModal()">取消</button><button class="btn btn-primary" id="cmdFileModalSave" onclick="saveCmdFile()">创建</button></div>
+  </div>
+</div>
+
 <div class="toast-container" id="toasts"></div>
 
 <script>
-const API = '';  // same origin
+const API='';
+const SECTIONS=['tasks','commands','monitor','system'];
+const STATE_LABELS={running:'运行中',idle:'空闲',paused:'已暂停',error:'异常',completed:'已完成'};
+const ACTION_LABELS={start:'已启动',stop:'已停止',pause:'已暂停',resume:'已恢复',trigger:'已触发'};
+const KEY_OPTIONS=['tab','enter','esc','space','backspace','up','down','left','right','ctrl','shift','alt','f12',
+  'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
+  '0','1','2','3','4','5','6','7','8','9'];
+const CMD_TYPES=[
+  {value:'key',label:'按键',icon:'&#9000;'},{value:'hotkey',label:'组合键',icon:'&#8984;'},
+  {value:'wait',label:'等待',icon:'&#9201;'},{value:'mouse_click',label:'鼠标点击',icon:'&#9755;'},
+  {value:'mouse_move',label:'鼠标移动',icon:'&#10138;'},{value:'mouse_scroll',label:'鼠标滚轮',icon:'&#8693;'},
+  {value:'file',label:'引用命令',icon:'&#128196;'},
+];
 
-// ── 状态标签映射 ──
-const STATE_LABELS = {
-  running: '运行中',
-  idle: '空闲',
-  paused: '已暂停',
-  error: '异常',
-  completed: '已完成',
-};
+let currentSection='tasks', editingTask=null, editingCmdFile=null, monitorTimer=null, monitorRunning=false;
+let tasks=[], cmdFiles=[], taskCommands=[], fileCommands=[];
 
-// ── State ──
-let currentSection = 'tasks';
-let editingTask = null;
-let monitorTimer = null;
-let tasks = [];
-
-// ── Navigation ──
-function showSection(name) {
-  currentSection = name;
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.getElementById('section-' + name).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.querySelectorAll('.nav-item')[['tasks','monitor','system'].indexOf(name)].classList.add('active');
-  if (name === 'tasks') refreshTasks();
-  if (name === 'system') refreshSystem();
+/* ── Util ── */
+function esc(s){if(typeof s!=='string')return s;const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function toast(msg,type='info'){const el=document.createElement('div');el.className='toast toast-'+type;el.textContent=msg;document.getElementById('toasts').appendChild(el);setTimeout(()=>el.remove(),4000);}
+async function api(path,opts={}){
+  try{const res=await fetch(API+path,{headers:{'Content-Type':'application/json',...opts.headers},...opts});
+    if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.detail||res.statusText);}
+    const ct=res.headers.get('content-type')||'';return ct.includes('json')?res.json():res;
+  }catch(e){toast(e.message,'error');throw e;}
 }
 
-// ── Toast ──
-function toast(msg, type='info') {
-  const el = document.createElement('div');
-  el.className = 'toast toast-' + type;
-  el.textContent = msg;
-  document.getElementById('toasts').appendChild(el);
-  setTimeout(() => el.remove(), 4000);
+/* ── Nav ── */
+function showSection(name){
+  currentSection=name;
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  const btns=document.querySelectorAll('#sidebarNav .nav-item');
+  btns.forEach(n=>n.classList.remove('active'));btns[SECTIONS.indexOf(name)].classList.add('active');
+  if(name==='tasks')refreshTasks();if(name==='commands')refreshCmdFiles();if(name==='system')refreshSystem();
 }
 
-// ── API helpers ──
-async function api(path, opts={}) {
-  try {
-    const res = await fetch(API + path, {
-      headers: {'Content-Type':'application/json', ...opts.headers},
-      ...opts
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || res.statusText);
-    }
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('json')) return res.json();
-    return res;
-  } catch(e) {
-    toast(e.message, 'error');
-    throw e;
+/* ══════════════════════════════════════════════════
+   ── Interactive Command Editor ──
+   ══════════════════════════════════════════════════ */
+
+function renderCmdEditor(cid,cmds,ns){
+  const c=document.getElementById(cid);
+  let h='<div class="cmd-list">';
+  cmds.forEach((cmd,i)=>{
+    const t=CMD_TYPES.find(c=>c.value===cmd.type)||{label:cmd.type,icon:'?'};
+    h+=`<div class="cmd-item"><span class="cmd-badge">${t.icon} ${t.label}</span><div class="cmd-detail">${cmdSummary(cmd)}</div><div class="cmd-actions">
+      ${i>0?`<button onclick="${ns}_move(${i},-1)" title="上移">&uarr;</button>`:''}
+      ${i<cmds.length-1?`<button onclick="${ns}_move(${i},1)" title="下移">&darr;</button>`:''}
+      <button onclick="${ns}_edit(${i})" title="编辑" style="color:var(--accent);">&#9998;</button>
+      <button onclick="${ns}_remove(${i})" title="删除" style="color:var(--red);">&times;</button>
+    </div></div>`;
+  });
+  h+=`</div><div style="margin-top:10px"><button class="btn btn-sm" onclick="${ns}_showAdd()">+ 添加动作</button></div><div id="${cid}_addForm"></div>`;
+  c.innerHTML=h;
+}
+
+function cmdSummary(cmd){
+  switch(cmd.type){
+    case 'key': return `按键 <span>${esc(cmd.key||'')}</span>`+(cmd.hold_sec?` 保持${cmd.hold_sec}s`:'');
+    case 'hotkey': return `组合键 <span>${(cmd.keys||[]).join('+')}</span>`+(cmd.hold_sec?` 保持${cmd.hold_sec}s`:'');
+    case 'wait': return `等待 <span>${cmd.sec||0}</span> 秒`;
+    case 'mouse_click': return `点击 <span>${({left:'左键',right:'右键',middle:'中键'})[cmd.button]||cmd.button}</span>`+(cmd.hold_sec?` 保持${cmd.hold_sec}s`:'');
+    case 'mouse_move': return (cmd.absolute?'移动到':'相对移动')+` <span>(${cmd.x},${cmd.y})</span>`+(cmd.duration?` ${cmd.duration}s`:'');
+    case 'mouse_scroll': return `滚轮 <span>${cmd.amount>0?'上':'下'} ${Math.abs(cmd.amount||0)}</span> 格`;
+    case 'file': return `引用 <span>${esc(cmd.path||'')}</span>`;
+    default: return JSON.stringify(cmd);
   }
 }
 
-// ── Tasks ──
-async function refreshTasks() {
-  try {
-    tasks = await api('/api/tasks');
-    renderTasks();
-  } catch(e) {}
+function cmdFormHtml(type,existing,cid,ns,editIdx){
+  const isEdit=editIdx!==undefined,v=existing||{};
+  let f='';
+  switch(type){
+    case 'key':
+      f=`<div class="form-row"><div class="form-group"><label>按键</label><select id="${cid}_f_key">${KEY_OPTIONS.map(k=>`<option value="${k}"${v.key===k?' selected':''}>${k}</option>`).join('')}</select></div>
+        <div class="form-group"><label>保持时长（秒，可选）</label><input type="number" id="${cid}_f_hold" value="${v.hold_sec||''}" min="0" step="0.01" placeholder="默认"></div></div>`;break;
+    case 'hotkey':
+      f=`<div class="form-group"><label>按键组合（按住 Ctrl 多选）</label><select id="${cid}_f_keys" multiple style="min-height:80px">${KEY_OPTIONS.map(k=>`<option value="${k}"${(v.keys||[]).includes(k)?' selected':''}>${k}</option>`).join('')}</select></div>
+        <div class="form-group"><label>保持时长（秒，可选）</label><input type="number" id="${cid}_f_hold" value="${v.hold_sec||''}" min="0" step="0.01" placeholder="默认"></div>`;break;
+    case 'wait':
+      f=`<div class="form-group"><label>等待时长（秒）</label><input type="number" id="${cid}_f_sec" value="${v.sec||1}" min="0" step="0.1"></div>`;break;
+    case 'mouse_click':
+      f=`<div class="form-row"><div class="form-group"><label>按钮</label><select id="${cid}_f_btn"><option value="left"${v.button==='left'?' selected':''}>左键</option><option value="right"${v.button==='right'?' selected':''}>右键</option><option value="middle"${v.button==='middle'?' selected':''}>中键</option></select></div>
+        <div class="form-group"><label>保持时长（秒，可选）</label><input type="number" id="${cid}_f_hold" value="${v.hold_sec||''}" min="0" step="0.01" placeholder="默认"></div></div>`;break;
+    case 'mouse_move':
+      f=`<div class="form-row-3"><div class="form-group"><label>X</label><input type="number" id="${cid}_f_x" value="${v.x||0}"></div>
+        <div class="form-group"><label>Y</label><input type="number" id="${cid}_f_y" value="${v.y||0}"></div>
+        <div class="form-group"><label>绝对坐标</label><select id="${cid}_f_abs"><option value="false"${!v.absolute?' selected':''}>否（相对）</option><option value="true"${v.absolute?' selected':''}>是（绝对）</option></select></div></div>
+        <div class="form-row"><div class="form-group"><label>移动耗时（秒，可选）</label><input type="number" id="${cid}_f_dur" value="${v.duration||''}" min="0" step="0.1" placeholder="默认"></div>
+        <div class="form-group"><label>曲率（可选）</label><input type="number" id="${cid}_f_wob" value="${v.wobble||''}" min="0" step="0.05" placeholder="默认"></div></div>`;break;
+    case 'mouse_scroll':
+      f=`<div class="form-group"><label>滚动量（正=上，负=下）</label><input type="number" id="${cid}_f_amt" value="${v.amount||3}" step="1"></div>`;break;
+    case 'file':
+      const opts=cmdFiles.map(cf=>`<option value="${cf.filename}"${v.path===cf.filename?' selected':''}>${cf.name} (${cf.command_count}条)</option>`).join('');
+      f=`<div class="form-group"><label>选择命令文件</label><select id="${cid}_f_path"><option value="">-- 请选择 --</option>${opts}</select></div>
+        <div class="form-group"><label>或手动输入路径</label><input type="text" id="${cid}_f_path_manual" value="${v.path||''}" placeholder="commands/xxx.yaml"></div>`;break;
+  }
+  const cancelFn=`document.getElementById('${cid}_addForm').innerHTML=''`;
+  return `<div class="cmd-form"><div style="font-size:13px;font-weight:600;margin-bottom:10px;">${CMD_TYPES.find(c=>c.value===type)?.label||type}</div>${f}
+    <div class="cmd-form-actions"><button class="btn btn-sm" onclick="${cancelFn}">取消</button>
+    <button class="btn btn-sm btn-primary" onclick="${ns}_confirm('${type}',${isEdit?editIdx:'null'})">${isEdit?'保存修改':'添加'}</button></div></div>`;
 }
 
-function renderTasks() {
-  const el = document.getElementById('taskList');
-  if (!tasks.length) {
-    el.innerHTML = `<div class="empty-state">
-      <div class="icon">&#9776;</div>
-      <p>暂无任务</p>
-      <button class="btn btn-primary" onclick="openTaskModal()">+ 创建第一个任务</button>
-    </div>`;
-    return;
+function collectCmd(type,cid){
+  const g=id=>document.getElementById(cid+'_f_'+id);
+  const cmd={type};
+  switch(type){
+    case 'key': cmd.key=g('key').value; if(g('hold')?.value)cmd.hold_sec=parseFloat(g('hold').value); break;
+    case 'hotkey': cmd.keys=Array.from(g('keys').selectedOptions).map(o=>o.value); if(!cmd.keys.length){toast('请选择至少一个按键','error');return null;} if(g('hold')?.value)cmd.hold_sec=parseFloat(g('hold').value); break;
+    case 'wait': cmd.sec=parseFloat(g('sec').value)||1; break;
+    case 'mouse_click': cmd.button=g('btn').value; if(g('hold')?.value)cmd.hold_sec=parseFloat(g('hold').value); break;
+    case 'mouse_move': cmd.x=parseInt(g('x').value)||0;cmd.y=parseInt(g('y').value)||0; if(g('abs').value==='true')cmd.absolute=true; if(g('dur')?.value)cmd.duration=parseFloat(g('dur').value); if(g('wob')?.value)cmd.wobble=parseFloat(g('wob').value); break;
+    case 'mouse_scroll': cmd.amount=parseInt(g('amt').value)||3; break;
+    case 'file': cmd.path=g('path').value||g('path_manual').value; if(!cmd.path){toast('请选择或输入命令文件','error');return null;} break;
   }
-  el.innerHTML = tasks.map(t => {
-    const s = t.status;
-    const c = t.config;
-    const state = s.state || 'idle';
-    const stateLabel = STATE_LABELS[state] || state;
-    const schedType = c.schedule.type;
-    const schedDesc = schedType === 'cron'
-      ? c.schedule.cron_expression
-      : schedType === 'interval'
-        ? c.schedule.interval_sec + '秒' + (c.schedule.jitter_sec ? ' \u00b1' + c.schedule.jitter_sec + '秒' : '')
-        : '单次执行';
-    const lastRun = s.last_run ? new Date(s.last_run).toLocaleTimeString() : '-';
-    return `<div class="task-card">
-      <div class="task-status-dot ${state}"></div>
-      <div class="task-info">
-        <div class="task-name">${esc(c.name)} <span class="badge badge-${state}">${stateLabel}</span></div>
-        <div class="task-meta">
-          <span>调度：${esc(schedDesc)}</span>
-          <span>已执行：${s.cycle_count} 次</span>
-          <span>上次：${lastRun}</span>
-          ${s.last_error ? '<span style="color:var(--red)">错误：' + esc(s.last_error.substring(0,60)) + '</span>' : ''}
-        </div>
-      </div>
-      <div class="task-actions">
-        ${state === 'running'
-          ? `<button class="btn btn-sm btn-warning" onclick="taskAction('${esc(c.name)}','pause')">暂停</button>
-             <button class="btn btn-sm btn-danger" onclick="taskAction('${esc(c.name)}','stop')">停止</button>`
-          : state === 'paused'
-          ? `<button class="btn btn-sm btn-success" onclick="taskAction('${esc(c.name)}','resume')">恢复</button>
-             <button class="btn btn-sm btn-danger" onclick="taskAction('${esc(c.name)}','stop')">停止</button>`
-          : `<button class="btn btn-sm btn-success" onclick="taskAction('${esc(c.name)}','start')">启动</button>`
-        }
-        <button class="btn btn-sm" onclick="taskAction('${esc(c.name)}','trigger')">触发</button>
-        <button class="btn btn-sm" onclick="editTask('${esc(c.name)}')">编辑</button>
-        <button class="btn btn-sm btn-danger btn-icon" onclick="deleteTask('${esc(c.name)}')" title="删除">&times;</button>
-      </div>
-    </div>`;
+  return cmd;
+}
+
+/* Task commands (tc) */
+function tc_move(i,d){[taskCommands[i],taskCommands[i+d]]=[taskCommands[i+d],taskCommands[i]];renderCmdEditor('cmdEditor',taskCommands,'tc');}
+function tc_remove(i){taskCommands.splice(i,1);renderCmdEditor('cmdEditor',taskCommands,'tc');}
+function tc_showAdd(){document.getElementById('cmdEditor_addForm').innerHTML='<div class="add-cmd-types">'+CMD_TYPES.map(t=>`<button onclick="tc_form('${t.value}')">${t.icon} ${t.label}</button>`).join('')+'</div>';}
+function tc_form(type){document.getElementById('cmdEditor_addForm').innerHTML=cmdFormHtml(type,null,'cmdEditor','tc');}
+function tc_edit(i){document.getElementById('cmdEditor_addForm').innerHTML=cmdFormHtml(taskCommands[i].type,taskCommands[i],'cmdEditor','tc',i);}
+function tc_confirm(type,idx){const cmd=collectCmd(type,'cmdEditor');if(!cmd)return;if(idx!==null)taskCommands[idx]=cmd;else taskCommands.push(cmd);renderCmdEditor('cmdEditor',taskCommands,'tc');}
+
+/* File commands (fc) */
+function fc_move(i,d){[fileCommands[i],fileCommands[i+d]]=[fileCommands[i+d],fileCommands[i]];renderCmdEditor('cmdFileEditor',fileCommands,'fc');}
+function fc_remove(i){fileCommands.splice(i,1);renderCmdEditor('cmdFileEditor',fileCommands,'fc');}
+function fc_showAdd(){document.getElementById('cmdFileEditor_addForm').innerHTML='<div class="add-cmd-types">'+CMD_TYPES.map(t=>`<button onclick="fc_form('${t.value}')">${t.icon} ${t.label}</button>`).join('')+'</div>';}
+function fc_form(type){document.getElementById('cmdFileEditor_addForm').innerHTML=cmdFormHtml(type,null,'cmdFileEditor','fc');}
+function fc_edit(i){document.getElementById('cmdFileEditor_addForm').innerHTML=cmdFormHtml(fileCommands[i].type,fileCommands[i],'cmdFileEditor','fc',i);}
+function fc_confirm(type,idx){const cmd=collectCmd(type,'cmdFileEditor');if(!cmd)return;if(idx!==null)fileCommands[idx]=cmd;else fileCommands.push(cmd);renderCmdEditor('cmdFileEditor',fileCommands,'fc');}
+
+/* ══════════════════════════════════════════
+   ── Tasks ──
+   ══════════════════════════════════════════ */
+
+async function refreshTasks(){try{tasks=await api('/api/tasks');renderTasks();}catch(e){}}
+function renderTasks(){
+  const el=document.getElementById('taskList');
+  if(!tasks.length){el.innerHTML='<div class="empty-state"><div class="icon">&#9776;</div><p>暂无任务</p><button class="btn btn-primary" onclick="openTaskModal()">+ 创建第一个任务</button></div>';return;}
+  el.innerHTML=tasks.map(t=>{
+    const s=t.status,c=t.config,state=s.state||'idle',sl=STATE_LABELS[state]||state;
+    const sd=c.schedule.type==='cron'?c.schedule.cron_expression:c.schedule.type==='interval'?c.schedule.interval_sec+'秒'+(c.schedule.jitter_sec?' \u00b1'+c.schedule.jitter_sec+'秒':''):'单次执行';
+    const lr=s.last_run?new Date(s.last_run).toLocaleTimeString():'-';
+    return `<div class="task-card"><div class="task-status-dot ${state}"></div><div class="task-info">
+      <div class="task-name">${esc(c.name)} <span class="badge badge-${state}">${sl}</span></div>
+      <div class="task-meta"><span>调度：${esc(sd)}</span><span>已执行：${s.cycle_count} 次</span><span>上次：${lr}</span>
+        ${s.last_error?'<span style="color:var(--red)">错误：'+esc(s.last_error.substring(0,60))+'</span>':''}</div>
+    </div><div class="task-actions">
+      ${state==='running'?`<button class="btn btn-sm btn-warning" onclick="taskAction('${esc(c.name)}','pause')">暂停</button><button class="btn btn-sm btn-danger" onclick="taskAction('${esc(c.name)}','stop')">停止</button>`
+       :state==='paused'?`<button class="btn btn-sm btn-success" onclick="taskAction('${esc(c.name)}','resume')">恢复</button><button class="btn btn-sm btn-danger" onclick="taskAction('${esc(c.name)}','stop')">停止</button>`
+       :`<button class="btn btn-sm btn-success" onclick="taskAction('${esc(c.name)}','start')">启动</button>`}
+      <button class="btn btn-sm" onclick="taskAction('${esc(c.name)}','trigger')">触发</button>
+      <button class="btn btn-sm" onclick="editTask('${esc(c.name)}')">编辑</button>
+      <button class="btn btn-sm btn-danger btn-icon" onclick="deleteTask('${esc(c.name)}')" title="删除">&times;</button>
+    </div></div>`;
   }).join('');
 }
+async function taskAction(n,a){try{await api(`/api/tasks/${encodeURIComponent(n)}/${a}`,{method:'POST'});toast(`任务"${n}" ${ACTION_LABELS[a]||a}`,'success');refreshTasks();}catch(e){}}
+async function deleteTask(n){if(!confirm(`确认删除任务"${n}"？`))return;try{await api(`/api/tasks/${encodeURIComponent(n)}`,{method:'DELETE'});toast(`任务"${n}" 已删除`,'success');refreshTasks();}catch(e){}}
 
-const ACTION_LABELS = {
-  start: '已启动', stop: '已停止', pause: '已暂停', resume: '已恢复', trigger: '已触发'
-};
-
-async function taskAction(name, action) {
-  try {
-    await api(`/api/tasks/${encodeURIComponent(name)}/${action}`, {method:'POST'});
-    toast(`任务 "${name}" ${ACTION_LABELS[action] || action}`, 'success');
-    refreshTasks();
-  } catch(e) {}
-}
-
-async function deleteTask(name) {
-  if (!confirm(`确认删除任务 "${name}"？`)) return;
-  try {
-    await api(`/api/tasks/${encodeURIComponent(name)}`, {method:'DELETE'});
-    toast(`任务 "${name}" 已删除`, 'success');
-    refreshTasks();
-  } catch(e) {}
-}
-
-// ── Task Modal ──
-function openTaskModal(task=null) {
-  editingTask = task;
-  document.getElementById('taskModalTitle').textContent = task ? '编辑任务' : '新建任务';
-  document.getElementById('taskModalSave').textContent = task ? '保存' : '创建';
-
-  if (task) {
-    const c = task.config;
-    document.getElementById('fName').value = c.name;
-    document.getElementById('fName').disabled = true;
-    document.getElementById('fEnabled').value = String(c.enabled);
-    document.getElementById('fSchedType').value = c.schedule.type;
-    document.getElementById('fInterval').value = c.schedule.interval_sec || 20;
-    document.getElementById('fCron').value = c.schedule.cron_expression || '';
-    document.getElementById('fJitter').value = c.schedule.jitter_sec || 0;
-    document.getElementById('fDelay').value = c.schedule.start_delay_sec || 0;
-    document.getElementById('fPause').value = c.options.pause_between_cycles_sec || 0;
-    document.getElementById('fHold').value = c.options.default_hold_sec ?? 0.1;
-    document.getElementById('fMoveDur').value = c.options.mouse_move_default_duration_sec ?? 0.8;
-    document.getElementById('fWobble').value = c.options.mouse_move_default_wobble ?? 0.1;
-    document.getElementById('fCmdFile').value = c.command_file || '';
-    document.getElementById('fCommands').value = c.commands && c.commands.length
-      ? commandsToYaml(c.commands) : '';
-    document.getElementById('fYamlFull').value = taskToYaml(c);
+function openTaskModal(task=null){
+  editingTask=task;
+  document.getElementById('taskModalTitle').textContent=task?'编辑任务':'新建任务';
+  document.getElementById('taskModalSave').textContent=task?'保存':'创建';
+  if(task){
+    const c=task.config;
+    document.getElementById('fName').value=c.name;document.getElementById('fName').disabled=true;
+    document.getElementById('fEnabled').value=String(c.enabled!==false);
+    document.getElementById('fSchedType').value=c.schedule.type;
+    document.getElementById('fInterval').value=c.schedule.interval_sec||20;
+    document.getElementById('fCron').value=c.schedule.cron_expression||'';
+    document.getElementById('fJitter').value=c.schedule.jitter_sec||0;
+    document.getElementById('fDelay').value=c.schedule.start_delay_sec||0;
+    document.getElementById('fPause').value=c.options.pause_between_cycles_sec||0;
+    document.getElementById('fHold').value=c.options.default_hold_sec??0.1;
+    document.getElementById('fMoveDur').value=c.options.mouse_move_default_duration_sec??0.8;
+    document.getElementById('fWobble').value=c.options.mouse_move_default_wobble??0.1;
+    taskCommands=JSON.parse(JSON.stringify(c.commands||[]));
   } else {
-    document.getElementById('fName').value = '';
-    document.getElementById('fName').disabled = false;
-    document.getElementById('fEnabled').value = 'true';
-    document.getElementById('fSchedType').value = 'interval';
-    document.getElementById('fInterval').value = 20;
-    document.getElementById('fCron').value = '';
-    document.getElementById('fJitter').value = 0;
-    document.getElementById('fDelay').value = 0;
-    document.getElementById('fPause').value = 0;
-    document.getElementById('fHold').value = 0.1;
-    document.getElementById('fMoveDur').value = 0.8;
-    document.getElementById('fWobble').value = 0.1;
-    document.getElementById('fCmdFile').value = '';
-    document.getElementById('fCommands').value = '- type: key\n  key: tab';
-    document.getElementById('fYamlFull').value = '';
+    document.getElementById('fName').value='';document.getElementById('fName').disabled=false;
+    document.getElementById('fEnabled').value='true';document.getElementById('fSchedType').value='interval';
+    document.getElementById('fInterval').value=20;document.getElementById('fCron').value='';
+    document.getElementById('fJitter').value=0;document.getElementById('fDelay').value=0;document.getElementById('fPause').value=0;
+    document.getElementById('fHold').value=0.1;document.getElementById('fMoveDur').value=0.8;document.getElementById('fWobble').value=0.1;
+    taskCommands=[];
   }
   onSchedTypeChange();
-  switchTab(document.querySelector('.tab'), 'tabForm');
-  document.getElementById('taskModal').style.display = 'flex';
+  loadCmdFilesForEditor().then(()=>renderCmdEditor('cmdEditor',taskCommands,'tc'));
+  switchTab(document.querySelector('.tab'),'tabForm');
+  document.getElementById('taskModal').style.display='flex';
+}
+function closeTaskModal(){document.getElementById('taskModal').style.display='none';editingTask=null;}
+function switchTab(btn,tabId){
+  btn.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
+  document.getElementById('tabForm').style.display=tabId==='tabForm'?'block':'none';
+  document.getElementById('tabYaml').style.display=tabId==='tabYaml'?'block':'none';
+  if(tabId==='tabYaml')document.getElementById('fYamlFull').value=buildYamlFromForm();
+}
+function onSchedTypeChange(){const t=document.getElementById('fSchedType').value;document.getElementById('fIntervalGroup').style.display=t==='interval'?'':'none';document.getElementById('fCronGroup').style.display=t==='cron'?'':'none';}
+
+async function saveTask(){
+  const yamlVis=document.getElementById('tabYaml').style.display!=='none';let payload;
+  if(yamlVis&&document.getElementById('fYamlFull').value.trim()){try{payload=parseSimpleYaml(document.getElementById('fYamlFull').value);}catch(e){toast('YAML格式错误：'+e.message,'error');return;}}
+  else{payload=buildPayloadFromForm();if(!payload)return;}
+  try{
+    if(editingTask){await api(`/api/tasks/${encodeURIComponent(editingTask.config.name)}`,{method:'PUT',body:JSON.stringify(payload)});toast('任务已更新','success');}
+    else{await api('/api/tasks',{method:'POST',body:JSON.stringify(payload)});toast('任务已创建','success');}
+    closeTaskModal();refreshTasks();
+  }catch(e){}
 }
 
-function closeTaskModal() {
-  document.getElementById('taskModal').style.display = 'none';
-  editingTask = null;
+function buildPayloadFromForm(){
+  const name=document.getElementById('fName').value.trim();
+  if(!name){toast('请输入任务名称','error');return null;}
+  const st=document.getElementById('fSchedType').value;
+  const schedule={type:st,jitter_sec:parseFloat(document.getElementById('fJitter').value)||0,start_delay_sec:parseFloat(document.getElementById('fDelay').value)||0};
+  if(st==='interval')schedule.interval_sec=parseFloat(document.getElementById('fInterval').value)||20;
+  if(st==='cron')schedule.cron_expression=document.getElementById('fCron').value.trim()||'*/5 * * * *';
+  const options={default_hold_sec:parseFloat(document.getElementById('fHold').value)||0.1,pause_between_cycles_sec:parseFloat(document.getElementById('fPause').value)||0,
+    mouse_move_default_duration_sec:parseFloat(document.getElementById('fMoveDur').value)||0.8,mouse_move_default_wobble:parseFloat(document.getElementById('fWobble').value)||0.1};
+  return{name,enabled:document.getElementById('fEnabled').value==='true',schedule,options,commands:taskCommands,command_file:null};
 }
+function editTask(n){const t=tasks.find(t=>t.config.name===n);if(t)openTaskModal(t);}
 
-function switchTab(btn, tabId) {
-  btn.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('tabForm').style.display = tabId === 'tabForm' ? 'block' : 'none';
-  document.getElementById('tabYaml').style.display = tabId === 'tabYaml' ? 'block' : 'none';
-  if (tabId === 'tabYaml' && !editingTask) {
-    document.getElementById('fYamlFull').value = buildYamlFromForm();
-  }
+/* ══════════════════════════════════════════
+   ── Command Files ──
+   ══════════════════════════════════════════ */
+
+async function loadCmdFilesForEditor(){try{cmdFiles=await api('/api/commands');}catch(e){cmdFiles=[];}}
+async function refreshCmdFiles(){await loadCmdFilesForEditor();renderCmdFiles();}
+function renderCmdFiles(){
+  const el=document.getElementById('cmdFileList');
+  if(!cmdFiles.length){el.innerHTML='<div class="empty-state"><div class="icon">&#9998;</div><p>暂无命令文件</p><button class="btn btn-primary" onclick="openCmdFileModal()">+ 创建第一个命令</button></div>';return;}
+  el.innerHTML=cmdFiles.map(f=>`<div class="cmd-file-card"><div class="cmd-file-info"><div class="cmd-file-name">${esc(f.name)}</div><div class="cmd-file-meta">${f.filename} · ${f.command_count} 条动作</div></div>
+    <div class="task-actions"><button class="btn btn-sm" onclick="editCmdFile('${esc(f.name)}')">编辑</button><button class="btn btn-sm btn-danger btn-icon" onclick="deleteCmdFile('${esc(f.name)}')" title="删除">&times;</button></div></div>`).join('');
 }
-
-function onSchedTypeChange() {
-  const t = document.getElementById('fSchedType').value;
-  document.getElementById('fIntervalGroup').style.display = t === 'interval' ? '' : 'none';
-  document.getElementById('fCronGroup').style.display = t === 'cron' ? '' : 'none';
+function openCmdFileModal(data=null){
+  editingCmdFile=data;
+  document.getElementById('cmdFileModalTitle').textContent=data?'编辑命令':'新建命令';
+  document.getElementById('cmdFileModalSave').textContent=data?'保存':'创建';
+  document.getElementById('cfName').value=data?data.name:'';document.getElementById('cfName').disabled=!!data;
+  fileCommands=data?JSON.parse(JSON.stringify(data.commands||[])):[];
+  loadCmdFilesForEditor().then(()=>renderCmdEditor('cmdFileEditor',fileCommands,'fc'));
+  document.getElementById('cmdFileModal').style.display='flex';
 }
-
-async function saveTask() {
-  const yamlTabVisible = document.getElementById('tabYaml').style.display !== 'none';
-  let payload;
-
-  if (yamlTabVisible && document.getElementById('fYamlFull').value.trim()) {
-    try {
-      payload = parseSimpleYaml(document.getElementById('fYamlFull').value);
-    } catch(e) {
-      toast('YAML 格式错误：' + e.message, 'error');
-      return;
-    }
-  } else {
-    payload = buildPayloadFromForm();
-    if (!payload) return;
-  }
-
-  try {
-    if (editingTask) {
-      await api(`/api/tasks/${encodeURIComponent(editingTask.config.name)}`, {
-        method: 'PUT',
-        body: JSON.stringify(payload)
-      });
-      toast('任务已更新', 'success');
-    } else {
-      await api('/api/tasks', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-      toast('任务已创建', 'success');
-    }
-    closeTaskModal();
-    refreshTasks();
-  } catch(e) {}
+function closeCmdFileModal(){document.getElementById('cmdFileModal').style.display='none';editingCmdFile=null;}
+async function editCmdFile(n){try{const d=await api(`/api/commands/${encodeURIComponent(n)}`);openCmdFileModal(d);}catch(e){}}
+async function saveCmdFile(){
+  const name=document.getElementById('cfName').value.trim();if(!name){toast('请输入命令名称','error');return;}
+  const payload={name,commands:fileCommands};
+  try{
+    if(editingCmdFile){await api(`/api/commands/${encodeURIComponent(editingCmdFile.name)}`,{method:'PUT',body:JSON.stringify(payload)});toast('命令已更新','success');}
+    else{await api('/api/commands',{method:'POST',body:JSON.stringify(payload)});toast('命令已创建','success');}
+    closeCmdFileModal();refreshCmdFiles();
+  }catch(e){}
 }
+async function deleteCmdFile(n){if(!confirm(`确认删除命令"${n}"？`))return;try{await api(`/api/commands/${encodeURIComponent(n)}`,{method:'DELETE'});toast(`命令"${n}" 已删除`,'success');refreshCmdFiles();}catch(e){}}
 
-function buildPayloadFromForm() {
-  const name = document.getElementById('fName').value.trim();
-  if (!name) { toast('请输入任务名称', 'error'); return null; }
+/* ══════════════════════════════════════════
+   ── Monitor ──
+   ══════════════════════════════════════════ */
 
-  const schedType = document.getElementById('fSchedType').value;
-  const schedule = {
-    type: schedType,
-    jitter_sec: parseFloat(document.getElementById('fJitter').value) || 0,
-    start_delay_sec: parseFloat(document.getElementById('fDelay').value) || 0,
-  };
-  if (schedType === 'interval') {
-    schedule.interval_sec = parseFloat(document.getElementById('fInterval').value) || 20;
-  }
-  if (schedType === 'cron') {
-    schedule.cron_expression = document.getElementById('fCron').value.trim() || '*/5 * * * *';
-  }
+function toggleMonitor(){monitorRunning?stopMonitor():startMonitor();}
+function startMonitor(){monitorRunning=true;document.getElementById('monitorToggle').textContent='停止';document.getElementById('monitorToggle').classList.add('btn-danger');captureScreen();monitorTimer=setInterval(captureScreen,parseInt(document.getElementById('monitorInterval').value));document.getElementById('monitorStatus').textContent='监控中';}
+function stopMonitor(){monitorRunning=false;if(monitorTimer){clearInterval(monitorTimer);monitorTimer=null;}document.getElementById('monitorToggle').textContent='开始';document.getElementById('monitorToggle').classList.remove('btn-danger');document.getElementById('monitorStatus').textContent='已停止';}
+async function captureScreen(){try{const r=await fetch(API+'/api/screen?format=base64');if(!r.ok)throw new Error('截图失败');const d=await r.json();document.getElementById('monitorImg').src='data:image/png;base64,'+d.image;document.getElementById('monitorStatus').textContent='最近更新：'+new Date().toLocaleTimeString();}catch(e){document.getElementById('monitorStatus').textContent='错误：'+e.message;}}
 
-  const options = {
-    default_hold_sec: parseFloat(document.getElementById('fHold').value) || 0.1,
-    pause_between_cycles_sec: parseFloat(document.getElementById('fPause').value) || 0,
-    mouse_move_default_duration_sec: parseFloat(document.getElementById('fMoveDur').value) || 0.8,
-    mouse_move_default_wobble: parseFloat(document.getElementById('fWobble').value) || 0.1,
-  };
+/* ══════════════════════════════════════════
+   ── System ──
+   ══════════════════════════════════════════ */
 
-  const cmdFile = document.getElementById('fCmdFile').value.trim();
-  let commands = [];
-  const cmdText = document.getElementById('fCommands').value.trim();
-  if (cmdText) {
-    try {
-      commands = parseSimpleYamlList(cmdText);
-    } catch(e) {
-      toast('命令列表 YAML 格式错误：' + e.message, 'error');
-      return null;
-    }
-  }
-
-  return {
-    name,
-    enabled: document.getElementById('fEnabled').value === 'true',
-    schedule,
-    options,
-    commands,
-    command_file: cmdFile || null,
-  };
+async function refreshSystem(){
+  try{const d=await api('/api/system/status');const u=formatDuration(d.uptime_seconds);
+    document.getElementById('systemStats').innerHTML=`
+      <div class="stat-card"><div class="stat-label">驱动类型</div><div class="stat-value ${d.driver_type==='interception'?'green':'orange'}">${d.driver_type}</div></div>
+      <div class="stat-card"><div class="stat-label">任务总数</div><div class="stat-value accent">${d.total_tasks}</div></div>
+      <div class="stat-card"><div class="stat-label">运行中</div><div class="stat-value green">${d.running_tasks}</div></div>
+      <div class="stat-card"><div class="stat-label">运行时间</div><div class="stat-value">${u}</div></div>
+      <div class="stat-card"><div class="stat-label">启动时间</div><div class="stat-value" style="font-size:18px">${new Date(d.started_at).toLocaleString()}</div></div>`;
+    document.getElementById('sidebarStatus').innerHTML=`<span class="dot dot-green"></span>${d.running_tasks} 运行中 / 共 ${d.total_tasks} 个`;
+  }catch(e){document.getElementById('sidebarStatus').innerHTML='<span class="dot dot-red"></span>连接失败';}
 }
+function formatDuration(s){if(s<60)return Math.round(s)+' 秒';if(s<3600)return Math.floor(s/60)+' 分 '+Math.round(s%60)+' 秒';return Math.floor(s/3600)+' 小时 '+Math.floor((s%3600)/60)+' 分';}
 
-// ── Minimal YAML parser (for commands) ──
-function parseSimpleYamlList(text) {
-  const items = [];
-  let current = null;
-  for (const line of text.split('\n')) {
-    const trimmed = line.trimEnd();
-    if (trimmed === '' || trimmed.startsWith('#')) continue;
-    if (trimmed.startsWith('- ')) {
-      if (current) items.push(current);
-      current = {};
-      const rest = trimmed.substring(2).trim();
-      if (rest) {
-        const [k, ...v] = rest.split(':');
-        if (v.length) current[k.trim()] = parseYamlValue(v.join(':').trim());
-      }
-    } else if (current && trimmed.startsWith('  ')) {
-      const kv = trimmed.trim();
-      const idx = kv.indexOf(':');
-      if (idx > 0) {
-        const k = kv.substring(0, idx).trim();
-        const v = kv.substring(idx+1).trim();
-        current[k] = parseYamlValue(v);
-      }
-    }
-  }
-  if (current) items.push(current);
-  return items;
+/* ══════════════════════════════════════════
+   ── YAML helpers ──
+   ══════════════════════════════════════════ */
+
+function commandsToYaml(cmds){return cmds.map(c=>{let s='- type: '+c.type;for(const[k,v]of Object.entries(c)){if(k==='type')continue;s+=Array.isArray(v)?'\n  '+k+': ['+v.join(', ')+']':'\n  '+k+': '+v;}return s;}).join('\n');}
+function taskToYaml(c){
+  let y=`name: ${c.name}\nenabled: ${c.enabled!==false}\n\nschedule:\n  type: ${c.schedule.type}\n`;
+  if(c.schedule.type==='interval')y+=`  interval_sec: ${c.schedule.interval_sec}\n`;
+  if(c.schedule.type==='cron')y+=`  cron_expression: "${c.schedule.cron_expression||'*/5 * * * *'}"\n`;
+  if(c.schedule.jitter_sec)y+=`  jitter_sec: ${c.schedule.jitter_sec}\n`;
+  if(c.schedule.start_delay_sec)y+=`  start_delay_sec: ${c.schedule.start_delay_sec}\n`;
+  y+=`\noptions:\n  default_hold_sec: ${c.options.default_hold_sec}\n  pause_between_cycles_sec: ${c.options.pause_between_cycles_sec}\n  mouse_move_default_duration_sec: ${c.options.mouse_move_default_duration_sec}\n  mouse_move_default_wobble: ${c.options.mouse_move_default_wobble}\n`;
+  if(c.commands?.length)y+=`\ncommands:\n`+commandsToYaml(c.commands)+'\n';return y;
 }
-
-function parseYamlValue(v) {
-  if (v === 'true') return true;
-  if (v === 'false') return false;
-  if (v === 'null' || v === '') return null;
-  if (/^-?\d+$/.test(v)) return parseInt(v);
-  if (/^-?\d+\.\d+$/.test(v)) return parseFloat(v);
-  if (v.startsWith('[') && v.endsWith(']')) {
-    return v.slice(1,-1).split(',').map(s => parseYamlValue(s.trim()));
-  }
-  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-    return v.slice(1,-1);
-  }
-  return v;
+function buildYamlFromForm(){const p=buildPayloadFromForm();if(!p)return'';return taskToYaml({...p,options:p.options||{},schedule:p.schedule||{type:'interval'}});}
+function parseSimpleYaml(text){
+  const result={};let currentObj=result;const stack=[{obj:result,indent:-1}];
+  for(const line of text.split('\n')){if(line.trim()===''||line.trim().startsWith('#'))continue;const indent=line.search(/\S/),content=line.trim();
+    while(stack.length>1&&indent<=stack[stack.length-1].indent)stack.pop();currentObj=stack[stack.length-1].obj;
+    if(content.startsWith('- ')){const pk=Object.keys(currentObj).pop();if(pk&&!Array.isArray(currentObj[pk]))currentObj[pk]=[];const rest=content.substring(2).trim();
+      if(rest.includes(':')){const item={};const[k,...v]=rest.split(':');item[k.trim()]=pv(v.join(':').trim());currentObj[pk].push(item);stack.push({obj:item,indent:indent+2});}else currentObj[pk].push(pv(rest));continue;}
+    const idx=content.indexOf(':');if(idx>0){const key=content.substring(0,idx).trim(),val=content.substring(idx+1).trim();
+      if(val===''||val==='|'){currentObj[key]={};stack.push({obj:currentObj[key],indent:indent});}else currentObj[key]=pv(val);}}return result;
 }
+function pv(v){if(v==='true')return true;if(v==='false')return false;if(v==='null'||v==='')return null;if(/^-?\d+$/.test(v))return parseInt(v);if(/^-?\d+\.\d+$/.test(v))return parseFloat(v);if(v.startsWith('[')&&v.endsWith(']'))return v.slice(1,-1).split(',').map(s=>pv(s.trim()));if((v.startsWith('"')&&v.endsWith('"'))||(v.startsWith("'")&&v.endsWith("'")))return v.slice(1,-1);return v;}
 
-function parseSimpleYaml(text) {
-  const result = {};
-  let currentKey = null;
-  let currentObj = result;
-  const stack = [{obj: result, indent: -1}];
-
-  for (const line of text.split('\n')) {
-    if (line.trim() === '' || line.trim().startsWith('#')) continue;
-    const indent = line.search(/\S/);
-    const content = line.trim();
-
-    while (stack.length > 1 && indent <= stack[stack.length-1].indent) {
-      stack.pop();
-    }
-    currentObj = stack[stack.length-1].obj;
-
-    if (content.startsWith('- ')) {
-      const parentKey = Object.keys(currentObj).pop();
-      if (parentKey && !Array.isArray(currentObj[parentKey])) {
-        currentObj[parentKey] = [];
-      }
-      const rest = content.substring(2).trim();
-      if (rest.includes(':')) {
-        const item = {};
-        const [k, ...v] = rest.split(':');
-        item[k.trim()] = parseYamlValue(v.join(':').trim());
-        currentObj[parentKey].push(item);
-        stack.push({obj: item, indent: indent + 2});
-      } else {
-        currentObj[parentKey].push(parseYamlValue(rest));
-      }
-      continue;
-    }
-
-    const idx = content.indexOf(':');
-    if (idx > 0) {
-      const key = content.substring(0, idx).trim();
-      const val = content.substring(idx+1).trim();
-      if (val === '' || val === '|') {
-        currentObj[key] = {};
-        stack.push({obj: currentObj[key], indent: indent});
-      } else {
-        currentObj[key] = parseYamlValue(val);
-      }
-    }
-  }
-  return result;
-}
-
-// ── YAML serialization (for display) ──
-function commandsToYaml(cmds) {
-  return cmds.map(c => {
-    let s = '- type: ' + c.type;
-    for (const [k,v] of Object.entries(c)) {
-      if (k === 'type') continue;
-      if (Array.isArray(v)) {
-        s += '\n  ' + k + ': [' + v.join(', ') + ']';
-      } else {
-        s += '\n  ' + k + ': ' + v;
-      }
-    }
-    return s;
-  }).join('\n');
-}
-
-function taskToYaml(c) {
-  let y = `name: ${c.name}\nenabled: ${c.enabled}\n\nschedule:\n  type: ${c.schedule.type}\n`;
-  if (c.schedule.type === 'interval') y += `  interval_sec: ${c.schedule.interval_sec}\n`;
-  if (c.schedule.type === 'cron') y += `  cron_expression: "${c.schedule.cron_expression || '*/5 * * * *'}"\n`;
-  if (c.schedule.jitter_sec) y += `  jitter_sec: ${c.schedule.jitter_sec}\n`;
-  if (c.schedule.start_delay_sec) y += `  start_delay_sec: ${c.schedule.start_delay_sec}\n`;
-  y += `\noptions:\n  default_hold_sec: ${c.options.default_hold_sec}\n`;
-  y += `  pause_between_cycles_sec: ${c.options.pause_between_cycles_sec}\n`;
-  y += `  mouse_move_default_duration_sec: ${c.options.mouse_move_default_duration_sec}\n`;
-  y += `  mouse_move_default_wobble: ${c.options.mouse_move_default_wobble}\n`;
-  if (c.command_file) y += `\ncommand_file: ${c.command_file}\n`;
-  if (c.commands && c.commands.length) y += `\ncommands:\n` + commandsToYaml(c.commands) + '\n';
-  return y;
-}
-
-function buildYamlFromForm() {
-  const p = buildPayloadFromForm();
-  if (!p) return '';
-  return taskToYaml({
-    ...p,
-    options: p.options || {},
-    schedule: p.schedule || {type:'interval'},
-  });
-}
-
-function editTask(name) {
-  const t = tasks.find(t => t.config.name === name);
-  if (t) openTaskModal(t);
-}
-
-// ── Monitor ──
-let monitorRunning = false;
-function toggleMonitor() {
-  if (monitorRunning) {
-    stopMonitor();
-  } else {
-    startMonitor();
-  }
-}
-
-function startMonitor() {
-  monitorRunning = true;
-  document.getElementById('monitorToggle').textContent = '停止';
-  document.getElementById('monitorToggle').classList.add('btn-danger');
-  captureScreen();
-  const interval = parseInt(document.getElementById('monitorInterval').value);
-  monitorTimer = setInterval(captureScreen, interval);
-  document.getElementById('monitorStatus').textContent = '监控中';
-}
-
-function stopMonitor() {
-  monitorRunning = false;
-  if (monitorTimer) { clearInterval(monitorTimer); monitorTimer = null; }
-  document.getElementById('monitorToggle').textContent = '开始';
-  document.getElementById('monitorToggle').classList.remove('btn-danger');
-  document.getElementById('monitorStatus').textContent = '已停止';
-}
-
-async function captureScreen() {
-  try {
-    const res = await fetch(API + '/api/screen?format=base64');
-    if (!res.ok) throw new Error('截图失败');
-    const data = await res.json();
-    document.getElementById('monitorImg').src = 'data:image/png;base64,' + data.image;
-    document.getElementById('monitorStatus').textContent =
-      '最近更新：' + new Date().toLocaleTimeString();
-  } catch(e) {
-    document.getElementById('monitorStatus').textContent = '错误：' + e.message;
-  }
-}
-
-// ── System ──
-async function refreshSystem() {
-  try {
-    const data = await api('/api/system/status');
-    const uptime = formatDuration(data.uptime_seconds);
-    document.getElementById('systemStats').innerHTML = `
-      <div class="stat-card">
-        <div class="stat-label">驱动类型</div>
-        <div class="stat-value ${data.driver_type==='interception'?'green':'orange'}">${data.driver_type}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">任务总数</div>
-        <div class="stat-value accent">${data.total_tasks}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">运行中</div>
-        <div class="stat-value green">${data.running_tasks}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">运行时间</div>
-        <div class="stat-value">${uptime}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">启动时间</div>
-        <div class="stat-value" style="font-size:18px">${new Date(data.started_at).toLocaleString()}</div>
-      </div>
-    `;
-    document.getElementById('sidebarStatus').innerHTML =
-      `<span class="dot dot-green"></span>${data.running_tasks} 运行中 / 共 ${data.total_tasks} 个`;
-  } catch(e) {
-    document.getElementById('sidebarStatus').innerHTML =
-      '<span class="dot dot-red"></span>连接失败';
-  }
-}
-
-function formatDuration(sec) {
-  if (sec < 60) return Math.round(sec) + ' 秒';
-  if (sec < 3600) return Math.floor(sec/60) + ' 分 ' + Math.round(sec%60) + ' 秒';
-  const h = Math.floor(sec/3600);
-  const m = Math.floor((sec%3600)/60);
-  return h + ' 小时 ' + m + ' 分';
-}
-
-// ── Utils ──
-function esc(s) {
-  if (typeof s !== 'string') return s;
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
-// ── Init ──
-refreshTasks();
-refreshSystem();
-setInterval(() => {
-  if (currentSection === 'tasks') refreshTasks();
-  refreshSystem();
-}, 5000);
+/* ── Init ── */
+refreshTasks();refreshSystem();
+setInterval(()=>{if(currentSection==='tasks')refreshTasks();refreshSystem();},5000);
 </script>
-
 </body>
 </html>

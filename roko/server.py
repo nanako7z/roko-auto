@@ -74,8 +74,8 @@ def start_server(config_path: Path = None) -> None:
     task_configs = load_tasks_from_directory(tasks_dir)
     for tc in task_configs:
         try:
-            task_manager.add_task(tc, auto_start=tc.enabled)
-            print(f"[INFO] Loaded task: {tc.name} (enabled={tc.enabled})")
+            task_manager.add_task(tc)
+            print(f"[INFO] Loaded task: {tc.name}")
         except Exception as e:
             print(f"[WARN] Failed to add task '{tc.name}': {e}")
 
@@ -87,6 +87,11 @@ def start_server(config_path: Path = None) -> None:
     app_state.driver_type = driver_type
     app_state.started_at = datetime.now()
     app_state.config_dir = config_dir
+    commands_dir = Path(cfg.commands_dir)
+    if not commands_dir.is_absolute():
+        commands_dir = config_dir / commands_dir
+    commands_dir.mkdir(parents=True, exist_ok=True)
+    app_state.commands_dir = commands_dir
 
     app = create_app()
 

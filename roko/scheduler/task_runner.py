@@ -26,7 +26,7 @@ class TaskRunner:
         self.mouse = mouse
         self.config_dir = config_dir
 
-        self.status = TaskStatus(name=config.name, enabled=config.enabled)
+        self.status = TaskStatus(name=config.name)
         self.scheduler = ScheduleCalculator(config.schedule)
 
         self._thread: Optional[threading.Thread] = None

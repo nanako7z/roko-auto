@@ -16,7 +16,6 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 class TaskCreateRequest(BaseModel):
     name: str
-    enabled: bool = True
     schedule: ScheduleConfig
     options: TaskOptions = TaskOptions()
     commands: List[Dict[str, Any]] = []
@@ -24,7 +23,6 @@ class TaskCreateRequest(BaseModel):
 
 
 class TaskUpdateRequest(BaseModel):
-    enabled: Optional[bool] = None
     schedule: Optional[ScheduleConfig] = None
     options: Optional[TaskOptions] = None
     commands: Optional[List[Dict[str, Any]]] = None

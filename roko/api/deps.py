@@ -21,6 +21,7 @@ class AppState:
         self.driver_type: str = "unknown"  # "interception" or "sendinput"
         self.started_at: datetime = datetime.now()
         self.config_dir: Path = Path(".")
+        self.commands_dir: Optional[Path] = None
 
 
 # Global singleton

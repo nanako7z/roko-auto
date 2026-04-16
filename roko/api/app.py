@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from .routes_commands import router as commands_router
 from .routes_screen import router as screen_router
 from .routes_system import router as system_router
 from .routes_tasks import router as tasks_router
@@ -23,6 +24,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(tasks_router)
+    app.include_router(commands_router)
     app.include_router(screen_router)
     app.include_router(system_router)
 

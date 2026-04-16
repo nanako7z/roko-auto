@@ -20,7 +20,6 @@ class TaskState(str, Enum):
 class TaskStatus(BaseModel):
     name: str
     state: TaskState = TaskState.idle
-    enabled: bool = True
     cycle_count: int = 0
     last_run: Optional[datetime] = None
     next_run: Optional[datetime] = None
