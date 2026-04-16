@@ -59,20 +59,6 @@ class TemplateMatcher:
 
         self._h, self._w = self._template_bgr.shape[:2]
 
-        # Detect whether this OpenCV build supports mask with TM_CCOEFF_NORMED
-        self._use_ccoeff_mask = self._has_mask and self._detect_ccoeff_mask_support()
-
-    def _detect_ccoeff_mask_support(self) -> bool:
-        """Test if OpenCV supports TM_CCOEFF_NORMED with mask parameter."""
-        try:
-            tiny_screen = np.zeros((8, 8, 3), dtype=np.uint8)
-            tiny_tmpl = np.zeros((4, 4, 3), dtype=np.uint8)
-            tiny_mask = np.ones((4, 4, 3), dtype=np.uint8) * 255
-            cv2.matchTemplate(tiny_screen, tiny_tmpl, cv2.TM_CCOEFF_NORMED, mask=tiny_mask)
-            return True
-        except cv2.error:
-            return False
-
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -103,16 +89,20 @@ class TemplateMatcher:
         tmpl: np.ndarray,
         mask3: Optional[np.ndarray],
     ) -> tuple[float, tuple[int, int]]:
-        """Run matchTemplate with TM_CCOEFF_NORMED. Returns (confidence, (x, y))."""
+        """Run matchTemplate. Returns (confidence, (x, y)).
+
+        Uses TM_CCORR_NORMED for masked templates (only normalized method
+        that supports mask in OpenCV), TM_CCOEFF_NORMED for non-masked.
+        """
         if mask3 is not None:
-            if self._use_ccoeff_mask:
-                result = cv2.matchTemplate(screen, tmpl, cv2.TM_CCOEFF_NORMED, mask=mask3)
-            else:
-                result = cv2.matchTemplate(screen, tmpl, cv2.TM_CCORR_NORMED, mask=mask3)
+            result = cv2.matchTemplate(screen, tmpl, cv2.TM_CCORR_NORMED, mask=mask3)
         else:
             result = cv2.matchTemplate(screen, tmpl, cv2.TM_CCOEFF_NORMED)
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
-        return float(max_val), max_loc
+        conf = float(max_val)
+        if conf != conf:  # NaN guard
+            conf = 0.0
+        return conf, max_loc
 
     def _scale_range(self, screen_w: int, screen_h: int) -> tuple[float, float]:
         """Compute valid (min_scale, max_scale) for the template vs screen."""
