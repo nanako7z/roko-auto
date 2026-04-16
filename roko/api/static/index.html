@@ -331,15 +331,15 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
         <div class="form-row-3">
           <div class="form-group">
             <label>按键保持时长（秒）</label>
-            <input type="number" id="fHold" value="0.03" min="0" step="0.01">
+            <input type="number" id="fHold" value="0.1" min="0" step="0.01">
           </div>
           <div class="form-group">
             <label>鼠标移动耗时（秒）</label>
-            <input type="number" id="fMoveDur" value="0" min="0" step="0.1">
+            <input type="number" id="fMoveDur" value="0.8" min="0" step="0.1">
           </div>
           <div class="form-group">
             <label>鼠标移动曲率</label>
-            <input type="number" id="fWobble" value="0.2" min="0" step="0.05">
+            <input type="number" id="fWobble" value="0.1" min="0" step="0.05">
           </div>
         </div>
 
@@ -538,9 +538,9 @@ function openTaskModal(task=null) {
     document.getElementById('fJitter').value = c.schedule.jitter_sec || 0;
     document.getElementById('fDelay').value = c.schedule.start_delay_sec || 0;
     document.getElementById('fPause').value = c.options.pause_between_cycles_sec || 0;
-    document.getElementById('fHold').value = c.options.default_hold_sec || 0.03;
-    document.getElementById('fMoveDur').value = c.options.mouse_move_default_duration_sec || 0;
-    document.getElementById('fWobble').value = c.options.mouse_move_default_wobble || 0.2;
+    document.getElementById('fHold').value = c.options.default_hold_sec ?? 0.1;
+    document.getElementById('fMoveDur').value = c.options.mouse_move_default_duration_sec ?? 0.8;
+    document.getElementById('fWobble').value = c.options.mouse_move_default_wobble ?? 0.1;
     document.getElementById('fCmdFile').value = c.command_file || '';
     document.getElementById('fCommands').value = c.commands && c.commands.length
       ? commandsToYaml(c.commands) : '';
@@ -555,9 +555,9 @@ function openTaskModal(task=null) {
     document.getElementById('fJitter').value = 0;
     document.getElementById('fDelay').value = 0;
     document.getElementById('fPause').value = 0;
-    document.getElementById('fHold').value = 0.03;
-    document.getElementById('fMoveDur').value = 0;
-    document.getElementById('fWobble').value = 0.2;
+    document.getElementById('fHold').value = 0.1;
+    document.getElementById('fMoveDur').value = 0.8;
+    document.getElementById('fWobble').value = 0.1;
     document.getElementById('fCmdFile').value = '';
     document.getElementById('fCommands').value = '- type: key\n  key: tab';
     document.getElementById('fYamlFull').value = '';
@@ -641,10 +641,10 @@ function buildPayloadFromForm() {
   }
 
   const options = {
-    default_hold_sec: parseFloat(document.getElementById('fHold').value) || 0.03,
+    default_hold_sec: parseFloat(document.getElementById('fHold').value) || 0.1,
     pause_between_cycles_sec: parseFloat(document.getElementById('fPause').value) || 0,
-    mouse_move_default_duration_sec: parseFloat(document.getElementById('fMoveDur').value) || 0,
-    mouse_move_default_wobble: parseFloat(document.getElementById('fWobble').value) || 0.2,
+    mouse_move_default_duration_sec: parseFloat(document.getElementById('fMoveDur').value) || 0.8,
+    mouse_move_default_wobble: parseFloat(document.getElementById('fWobble').value) || 0.1,
   };
 
   const cmdFile = document.getElementById('fCmdFile').value.trim();

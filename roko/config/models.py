@@ -46,10 +46,10 @@ class ScheduleConfig(BaseModel):
 
 
 class TaskOptions(BaseModel):
-    default_hold_sec: float = 0.03
+    default_hold_sec: float = 0.1
     pause_between_cycles_sec: float = 0.0
-    mouse_move_default_duration_sec: float = 0.0
-    mouse_move_default_wobble: float = 0.2
+    mouse_move_default_duration_sec: float = 0.8
+    mouse_move_default_wobble: float = 0.1
 
     @field_validator("default_hold_sec", "pause_between_cycles_sec",
                      "mouse_move_default_duration_sec", "mouse_move_default_wobble")
