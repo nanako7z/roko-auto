@@ -687,8 +687,9 @@ function renderTemplates(){
     <div style="height:120px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;overflow:hidden;border-radius:4px;background:var(--bg);"><img src="${API}/api/templates/${encodeURIComponent(t.name)}" style="max-width:100%;max-height:120px;object-fit:contain;"></div>
     <div style="font-size:14px;font-weight:600;margin-bottom:2px;">${esc(t.name)}</div>
     <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">${t.filename} · ${(t.size/1024).toFixed(1)}KB</div>
+    <div style="display:flex;align-items:center;gap:4px;justify-content:center;margin-bottom:6px;font-size:12px;"><label>阈值</label><input type="range" id="tplThreshold_${esc(t.name)}" min="0" max="1" step="0.05" value="0.8" style="width:80px;" oninput="this.nextElementSibling.textContent=this.value"><span>0.8</span></div>
     <div style="display:flex;gap:6px;justify-content:center;">
-      <button class="btn btn-sm btn-success" onclick="testTemplate('${esc(t.name)}')">测试匹配</button>
+      <button class="btn btn-sm btn-success" onclick="testTemplate('${esc(t.name)}',document.getElementById('tplThreshold_${esc(t.name)}').value)">测试匹配</button>
       <button class="btn btn-sm btn-danger btn-icon" onclick="deleteTemplate('${esc(t.name)}')">&times;</button>
     </div>
   </div>`).join('')+'</div>';
@@ -704,10 +705,11 @@ async function uploadTemplate(input){
   input.value='';
 }
 async function deleteTemplate(n){if(!confirm(`确认删除模板"${n}"？`))return;try{await api(`/api/templates/${encodeURIComponent(n)}`,{method:'DELETE'});toast(`模板"${n}" 已删除`,'success');refreshTemplates();}catch(e){}}
-async function testTemplate(n){
+async function testTemplate(n,threshold){
+  const th=parseFloat(threshold)||0.8;
   toast('正在测试匹配...','info');
   try{
-    const r=await api(`/api/templates/${encodeURIComponent(n)}/test`,{method:'POST'});
+    const r=await api(`/api/templates/${encodeURIComponent(n)}/test?threshold=${th}`,{method:'POST'});
     if(r.matched){
       toast(`匹配成功！置信度=${r.confidence} 中心=(${r.center_x},${r.center_y})`,'success');
     }else{
@@ -717,7 +719,7 @@ async function testTemplate(n){
     const ov=document.createElement('div');ov.className='modal-overlay';ov.onclick=function(e){if(e.target===this)this.remove();};
     ov.innerHTML=`<div class="modal" style="width:auto;max-width:95vw;"><div class="modal-header"><h3>匹配测试 — ${esc(n)}</h3><button class="close-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button></div>
       <div class="modal-body" style="text-align:center;"><img src="data:image/png;base64,${r.annotated_image}" style="max-width:100%;border-radius:4px;">
-      <div style="margin-top:12px;font-size:13px;color:var(--text2);">${r.matched?`<span style="color:var(--green);">匹配成功</span> 置信度=${r.confidence} 位置=(${r.x},${r.y}) 中心=(${r.center_x},${r.center_y})`:'<span style="color:var(--red);">未匹配</span>'}</div></div></div>`;
+      <div style="margin-top:12px;font-size:13px;color:var(--text2);">${r.matched?`<span style="color:var(--green);">匹配成功</span> 置信度=${r.confidence} 阈值=${r.threshold} 位置=(${r.x},${r.y}) 中心=(${r.center_x},${r.center_y})`:`<span style="color:var(--red);">未匹配</span> 阈值=${r.threshold}`}</div></div></div>`;
     document.body.appendChild(ov);
   }catch(e){}
 }
