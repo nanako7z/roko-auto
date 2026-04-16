@@ -137,15 +137,24 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
 .rec-hint { font-size:12px; color:var(--text2); margin-top:12px; line-height:1.6; }
 .source-badge { display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:600; margin-left:6px; background:rgba(243,139,168,.15); color:var(--red); vertical-align:middle; }
 /* Mobile */
+.mobile-nav-toggle { display:none; }
+.mobile-nav-dropdown { display:none; }
 @media(max-width:768px) {
   .app { flex-direction:column; height:auto; min-height:100vh; }
-  .sidebar { width:100%; height:auto; border-right:none; border-bottom:1px solid var(--border); flex-shrink:0; }
-  .sidebar-header { padding:12px 16px; display:flex; align-items:center; gap:12px; }
+  .sidebar { width:100%; height:auto; border-right:none; border-bottom:1px solid var(--border); flex-shrink:0; position:relative; }
+  .sidebar-header { padding:10px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; }
   .sidebar-header h1 { font-size:16px; } .sidebar-header .subtitle { display:none; }
-  .sidebar-nav { display:flex; flex-direction:row; padding:0 8px 8px; gap:4px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  .nav-item { flex:0 0 auto; padding:8px 12px; font-size:13px; gap:6px; white-space:nowrap; }
-  .nav-item .icon { font-size:16px; width:auto; }
+  .sidebar-nav { display:none; }
   .sidebar-status { display:none; }
+  .mobile-nav-toggle { display:flex; align-items:center; gap:8px; width:100%; padding:10px 16px; background:var(--bg3); border:none; border-top:1px solid var(--border); color:var(--text); font-size:14px; font-family:inherit; }
+  .mobile-nav-toggle .icon { font-size:16px; }
+  .mobile-nav-toggle .arrow { margin-left:auto; font-size:12px; color:var(--text2); transition:transform .2s; }
+  .mobile-nav-toggle.open .arrow { transform:rotate(180deg); }
+  .mobile-nav-dropdown { position:absolute; left:0; right:0; top:100%; background:var(--bg2); border-bottom:1px solid var(--border); z-index:50; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+  .mobile-nav-dropdown.show { display:block; }
+  .mobile-nav-dropdown .nav-item { border-radius:0; padding:14px 20px; border-bottom:1px solid var(--border); font-size:14px; }
+  .mobile-nav-dropdown .nav-item:last-child { border-bottom:none; }
+  .mobile-nav-dropdown .nav-item.active { background:var(--bg3); }
   .main { flex:1; min-height:0; }
   .topbar { height:48px; padding:0 16px; }
   .topbar h2 { font-size:14px; }
@@ -184,6 +193,8 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
       <button class="nav-item" onclick="showSection('system')"><span class="icon">&#9881;</span><span>系统状态</span></button>
     </nav>
     <div class="sidebar-status" id="sidebarStatus"><span class="dot dot-green"></span>连接中...</div>
+    <button class="mobile-nav-toggle" id="mobileNavToggle" onclick="toggleMobileNav()"><span class="icon" id="mobileNavIcon">&#9776;</span><span id="mobileNavLabel">任务管理</span><span class="arrow">&#9660;</span></button>
+    <div class="mobile-nav-dropdown" id="mobileNavDropdown"></div>
   </div>
   <div class="main">
     <div class="section active" id="section-tasks">
@@ -309,14 +320,26 @@ async function api(path,opts={}){
 }
 
 /* ── Nav ── */
+const SECTION_META={tasks:{icon:'\u2630',label:'任务管理'},commands:{icon:'\u270E',label:'命令库'},record:{icon:'\u23FA',label:'操作录制'},monitor:{icon:'\u25C9',label:'屏幕监控'},system:{icon:'\u2699',label:'系统状态'}};
 function showSection(name){
   currentSection=name;
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('section-'+name).classList.add('active');
   const btns=document.querySelectorAll('#sidebarNav .nav-item');
   btns.forEach(n=>n.classList.remove('active'));btns[SECTIONS.indexOf(name)].classList.add('active');
+  // Update mobile nav
+  const m=SECTION_META[name];
+  if(m){document.getElementById('mobileNavIcon').innerHTML=m.icon;document.getElementById('mobileNavLabel').textContent=m.label;}
+  closeMobileNav();
   if(name==='tasks')refreshTasks();if(name==='commands')refreshCmdFiles();if(name==='system')refreshSystem();
 }
+function toggleMobileNav(){
+  const dd=document.getElementById('mobileNavDropdown'), tb=document.getElementById('mobileNavToggle');
+  if(dd.classList.contains('show')){closeMobileNav();return;}
+  dd.innerHTML=SECTIONS.map(s=>{const m=SECTION_META[s];return `<button class="nav-item${s===currentSection?' active':''}" onclick="showSection('${s}')"><span class="icon">${m.icon}</span><span>${m.label}</span></button>`;}).join('');
+  dd.classList.add('show');tb.classList.add('open');
+}
+function closeMobileNav(){document.getElementById('mobileNavDropdown').classList.remove('show');document.getElementById('mobileNavToggle').classList.remove('open');}
 
 /* ══════════════════════════════════════════════════
    ── Interactive Command Editor ──
@@ -644,6 +667,7 @@ async function pollRecording(){
 /* ── Init ── */
 refreshTasks();refreshSystem();
 setInterval(()=>{if(currentSection==='tasks')refreshTasks();refreshSystem();},5000);
+document.addEventListener('click',e=>{const sb=document.querySelector('.sidebar');if(sb&&!sb.contains(e.target))closeMobileNav();});
 // Check if recording was already active on page load
 fetch(API+'/api/record/status').then(r=>r.json()).then(s=>{
   if(s.active){recStartTime=Date.now()-s.elapsed*1000;document.getElementById('recName').value=s.name;
