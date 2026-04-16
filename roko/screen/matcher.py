@@ -9,6 +9,12 @@ from typing import Optional
 import cv2
 import numpy as np
 
+try:
+    from numba import njit
+    _HAS_NUMBA = True
+except ImportError:
+    _HAS_NUMBA = False
+
 
 @dataclass
 class MatchResult:
@@ -22,11 +28,122 @@ class MatchResult:
     confidence: float  # Match confidence score
 
 
-# Confidence above this value triggers early termination in coarse pass.
 _EARLY_STOP_CONF = 0.95
 
-# Coarse pass downscale factor for the screenshot (2 = half resolution).
-_COARSE_DOWNSAMPLE = 2
+# Pyramid levels: (downsample_factor, num_scales, roi_padding_factor)
+_PYRAMID_LEVELS = [
+    (4, 20, None),   # L0: 1/4 res, 20 scales, full image
+    (2, 10, 2.0),    # L1: 1/2 res, 10 scales, ROI from L0
+    (1, 5,  1.5),    # L2: full res,  5 scales, tight ROI from L1
+]
+
+
+def _center_out_order(n: int) -> list[int]:
+    """Return indices 0..n-1 reordered from center outward."""
+    mid = n // 2
+    order = []
+    lo, hi = mid - 1, mid
+    while lo >= 0 or hi < n:
+        if hi < n:
+            order.append(hi)
+            hi += 1
+        if lo >= 0:
+            order.append(lo)
+            lo -= 1
+    return order
+
+
+# ------------------------------------------------------------------
+# Numba-accelerated SAD with early termination
+# ------------------------------------------------------------------
+
+def _make_sad_functions():
+    """Build numba-jitted SAD search functions (called once at import)."""
+
+    @njit(cache=True)
+    def _sad_search(screen, tmpl):
+        """SAD search with per-pixel early exit. Returns (best_sad, x, y)."""
+        sh = screen.shape[0]
+        sw = screen.shape[1]
+        sc = screen.shape[2]
+        th = tmpl.shape[0]
+        tw = tmpl.shape[1]
+
+        best_sad = np.int64(th) * np.int64(tw) * np.int64(sc) * np.int64(255)
+        best_x = np.int32(0)
+        best_y = np.int32(0)
+
+        for y in range(sh - th + 1):
+            for x in range(sw - tw + 1):
+                sad = np.int64(0)
+                bail = False
+                for ty in range(th):
+                    for tx in range(tw):
+                        for c in range(sc):
+                            sad += abs(np.int32(screen[y + ty, x + tx, c])
+                                       - np.int32(tmpl[ty, tx, c]))
+                        if sad >= best_sad:
+                            bail = True
+                            break
+                    if bail:
+                        break
+                if not bail:
+                    best_sad = sad
+                    best_x = np.int32(x)
+                    best_y = np.int32(y)
+
+        return best_sad, best_x, best_y
+
+    @njit(cache=True)
+    def _sad_search_masked(screen, tmpl, mask):
+        """SAD search with mask and per-pixel early exit."""
+        sh = screen.shape[0]
+        sw = screen.shape[1]
+        sc = screen.shape[2]
+        th = tmpl.shape[0]
+        tw = tmpl.shape[1]
+
+        # Count opaque pixels for normalization
+        n_opaque = np.int64(0)
+        for ty in range(th):
+            for tx in range(tw):
+                if mask[ty, tx] > 0:
+                    n_opaque += 1
+        if n_opaque == 0:
+            return np.int64(0), np.int32(0), np.int32(0)
+
+        best_sad = n_opaque * np.int64(sc) * np.int64(255)
+        best_x = np.int32(0)
+        best_y = np.int32(0)
+
+        for y in range(sh - th + 1):
+            for x in range(sw - tw + 1):
+                sad = np.int64(0)
+                bail = False
+                for ty in range(th):
+                    for tx in range(tw):
+                        if mask[ty, tx] == 0:
+                            continue
+                        for c in range(sc):
+                            sad += abs(np.int32(screen[y + ty, x + tx, c])
+                                       - np.int32(tmpl[ty, tx, c]))
+                        if sad >= best_sad:
+                            bail = True
+                            break
+                    if bail:
+                        break
+                if not bail:
+                    best_sad = sad
+                    best_x = np.int32(x)
+                    best_y = np.int32(y)
+
+        return best_sad, best_x, best_y
+
+    return _sad_search, _sad_search_masked
+
+
+if _HAS_NUMBA:
+    _sad_search, _sad_search_masked = _make_sad_functions()
 
 
 class TemplateMatcher:
@@ -35,15 +152,15 @@ class TemplateMatcher:
     Supports transparent PNG templates — alpha channel is used as a mask
     so only opaque pixels participate in matching.
 
-    Uses multi-scale color matching with a two-phase strategy:
-      1. **Coarse pass** — grayscale + downsampled screenshot for speed.
-      2. **Refine pass** — full-resolution BGR around the best scale for accuracy.
+    Uses a 3-level pyramid for multi-scale matching:
+      L0: 1/4 resolution, 20 scales (center-out), full image
+      L1: 1/2 resolution, 10 scales, ROI around L0 position
+      L2: full resolution,  5 scales, tight ROI — uses SAD early-exit (numba)
     """
 
     def __init__(self, template_path: Path, threshold: float = 0.8) -> None:
         self.threshold = threshold
 
-        # Use np.fromfile + imdecode to support non-ASCII (e.g. Chinese) paths on Windows
         template_path = Path(template_path)
         if not template_path.exists():
             raise FileNotFoundError(f"Cannot load template image: {template_path}")
@@ -52,7 +169,6 @@ class TemplateMatcher:
         if img is None:
             raise FileNotFoundError(f"Cannot load template image: {template_path}")
 
-        # Separate alpha channel if present (BGRA)
         if img.ndim == 3 and img.shape[2] == 4:
             alpha = img[:, :, 3]
             self._template_bgr = img[:, :, :3]
@@ -63,7 +179,6 @@ class TemplateMatcher:
             self._mask = None
             self._has_mask = False
 
-        self._template_gray = cv2.cvtColor(self._template_bgr, cv2.COLOR_BGR2GRAY)
         self._h, self._w = self._template_bgr.shape[:2]
 
     # ------------------------------------------------------------------
@@ -71,19 +186,16 @@ class TemplateMatcher:
     # ------------------------------------------------------------------
 
     def _resize_template(
-        self, scale: float, *, gray: bool
+        self, scale: float
     ) -> tuple[np.ndarray, Optional[np.ndarray], int, int]:
-        """Return (template, mask_or_None, tw, th) at *scale*."""
-        src = self._template_gray if gray else self._template_bgr
-
+        """Return (template_bgr, mask_or_None, tw, th) at *scale*."""
         if scale == 1.0:
-            h, w = src.shape[:2]
-            return src, self._mask, w, h
+            return self._template_bgr, self._mask, self._w, self._h
 
         new_w = max(1, int(self._w * scale))
         new_h = max(1, int(self._h * scale))
         interp = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_LINEAR
-        tmpl = cv2.resize(src, (new_w, new_h), interpolation=interp)
+        tmpl = cv2.resize(self._template_bgr, (new_w, new_h), interpolation=interp)
         mask = (
             cv2.resize(self._mask, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
             if self._has_mask
@@ -92,15 +204,14 @@ class TemplateMatcher:
         return tmpl, mask, new_w, new_h
 
     @staticmethod
-    def _run_match(
+    def _run_match_cv(
         screen: np.ndarray,
         tmpl: np.ndarray,
         mask: Optional[np.ndarray],
         has_mask: bool,
     ) -> tuple[float, tuple[int, int]]:
-        """Run matchTemplate and return (confidence, (x, y))."""
+        """matchTemplate and return (confidence, (x, y))."""
         if has_mask and mask is not None:
-            # Mask must have same channel count as template
             if tmpl.ndim == 3 and mask.ndim == 2:
                 mask = cv2.merge([mask, mask, mask])
             result = cv2.matchTemplate(screen, tmpl, cv2.TM_CCORR_NORMED, mask=mask)
@@ -108,6 +219,34 @@ class TemplateMatcher:
             result = cv2.matchTemplate(screen, tmpl, cv2.TM_CCOEFF_NORMED)
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
         return float(max_val), max_loc
+
+    @staticmethod
+    def _run_match_sad(
+        screen: np.ndarray,
+        tmpl: np.ndarray,
+        mask: Optional[np.ndarray],
+        has_mask: bool,
+    ) -> tuple[float, tuple[int, int]]:
+        """SAD early-exit search via numba. Returns (confidence, (x, y)).
+
+        confidence = 1.0 - SAD / max_possible_SAD.
+        """
+        # Ensure contiguous arrays for numba
+        screen_c = np.ascontiguousarray(screen)
+        tmpl_c = np.ascontiguousarray(tmpl)
+
+        if has_mask and mask is not None:
+            mask_c = np.ascontiguousarray(mask)
+            best_sad, bx, by = _sad_search_masked(screen_c, tmpl_c, mask_c)
+            n_opaque = int(np.count_nonzero(mask))
+            max_sad = n_opaque * screen.shape[2] * 255
+        else:
+            best_sad, bx, by = _sad_search(screen_c, tmpl_c)
+            th, tw = tmpl.shape[:2]
+            max_sad = th * tw * screen.shape[2] * 255
+
+        conf = 1.0 - (best_sad / max_sad) if max_sad > 0 else 0.0
+        return conf, (int(bx), int(by))
 
     def _scale_range(self, screen_w: int, screen_h: int) -> tuple[float, float]:
         """Compute valid (min_scale, max_scale) for the template vs screen."""
@@ -118,18 +257,41 @@ class TemplateMatcher:
         max_scale = min(2.0, max_scale_w, max_scale_h)
         return min_scale, max_scale
 
+    @staticmethod
+    def _extract_roi(
+        screen: np.ndarray,
+        loc: tuple[int, int],
+        tw: int, th: int,
+        padding: float,
+        ds: int,
+    ) -> tuple[np.ndarray, int, int]:
+        """Extract ROI around *loc*. Returns (roi, x_offset, y_offset)."""
+        scr_h, scr_w = screen.shape[:2]
+        cx = loc[0] * ds + tw * ds // 2
+        cy = loc[1] * ds + th * ds // 2
+
+        margin_x = int(tw * ds * padding)
+        margin_y = int(th * ds * padding)
+
+        x0 = max(0, cx - margin_x)
+        y0 = max(0, cy - margin_y)
+        x1 = min(scr_w, cx + margin_x)
+        y1 = min(scr_h, cy + margin_y)
+
+        return screen[y0:y1, x0:x1], x0, y0
+
     # ------------------------------------------------------------------
-    # Multi-scale matching
+    # Multi-scale pyramid matching
     # ------------------------------------------------------------------
 
     def _multiscale_match(self, screen_bgr: np.ndarray) -> Optional[MatchResult]:
         screen_h, screen_w = screen_bgr.shape[:2]
 
-        # --- Fast path: template is already reasonably sized ---------------
+        # --- Fast path: template already reasonably sized ------------------
         if self._w <= screen_w and self._h <= screen_h:
             area_ratio = (self._w * self._h) / (screen_w * screen_h)
             if area_ratio < 0.25:
-                conf, loc = self._run_match(
+                conf, loc = self._run_match_cv(
                     screen_bgr, self._template_bgr, self._mask, self._has_mask
                 )
                 if conf >= self.threshold:
@@ -140,83 +302,86 @@ class TemplateMatcher:
                         confidence=conf,
                     )
 
-        # --- Determine scale range -----------------------------------------
+        # --- Determine full scale range ------------------------------------
         min_scale, max_scale = self._scale_range(screen_w, screen_h)
         if min_scale > max_scale:
             return None
 
-        # --- Phase 1: coarse pass (grayscale + downsampled) ----------------
-        ds = _COARSE_DOWNSAMPLE
-        screen_small = cv2.resize(
-            screen_bgr, (screen_w // ds, screen_h // ds), interpolation=cv2.INTER_AREA
-        )
-        screen_small_gray = cv2.cvtColor(screen_small, cv2.COLOR_BGR2GRAY)
-
-        num_coarse = 20
-        # Build scales from center outward so common scales are tried first
-        linear = np.linspace(min_scale, max_scale, num_coarse)
-        mid = len(linear) // 2
-        coarse_scales = np.empty_like(linear)
-        lo, hi = mid - 1, mid
-        idx = 0
-        while lo >= 0 or hi < len(linear):
-            if hi < len(linear):
-                coarse_scales[idx] = linear[hi]
-                idx += 1
-                hi += 1
-            if lo >= 0:
-                coarse_scales[idx] = linear[lo]
-                idx += 1
-                lo -= 1
-        coarse_scales = coarse_scales[:idx]
-
-        best_conf = -1.0
-        best_scale = 1.0
-
-        for s in coarse_scales:
-            effective_scale = s / ds  # template also needs to shrink by ds
-            tmpl, mask, tw, th = self._resize_template(effective_scale, gray=True)
-            if tw > screen_small_gray.shape[1] or th > screen_small_gray.shape[0]:
-                continue
-            if tw < 4 or th < 4:
-                continue
-            conf, _ = self._run_match(screen_small_gray, tmpl, mask, self._has_mask)
-            if conf > best_conf:
-                best_conf = conf
-                best_scale = s
-            if conf >= _EARLY_STOP_CONF:
-                break
-
-        # --- Phase 2: refine pass (full-res BGR) around best scale ---------
-        step = (max_scale - min_scale) / num_coarse
-        refine_lo = max(min_scale, best_scale - step)
-        refine_hi = min(max_scale, best_scale + step)
-        refine_scales = np.linspace(refine_lo, refine_hi, 10)
-
-        best_conf = -1.0
-        best_loc = (0, 0)
+        best_scale = (min_scale + max_scale) / 2
+        best_loc: tuple[int, int] = (0, 0)
         best_tw, best_th = self._w, self._h
+        scale_lo, scale_hi = min_scale, max_scale
+        prev_ds = 1
 
-        for s in refine_scales:
-            tmpl, mask, tw, th = self._resize_template(s, gray=False)
-            if tw > screen_w or th > screen_h:
-                continue
-            if tw < 4 or th < 4:
-                continue
-            conf, loc = self._run_match(screen_bgr, tmpl, mask, self._has_mask)
-            if conf > best_conf:
-                best_conf = conf
-                best_loc = loc
-                best_tw, best_th = tw, th
-            if conf >= _EARLY_STOP_CONF:
-                break
+        for ds, num_scales, roi_padding in _PYRAMID_LEVELS:
+            # Downsample screenshot
+            if ds > 1:
+                scr = cv2.resize(
+                    screen_bgr,
+                    (screen_w // ds, screen_h // ds),
+                    interpolation=cv2.INTER_AREA,
+                )
+            else:
+                scr = screen_bgr
 
-        if best_conf >= self.threshold:
+            # Extract ROI if we have a prior position
+            roi_ox, roi_oy = 0, 0
+            if roi_padding is not None:
+                scr, roi_ox, roi_oy = self._extract_roi(
+                    scr, best_loc, best_tw, best_th,
+                    roi_padding, prev_ds // ds if prev_ds > ds else 1,
+                )
+
+            # Use SAD early-exit for the final level (full res, small ROI)
+            use_sad = _HAS_NUMBA and ds == 1
+
+            # Build scale list
+            scales = np.linspace(scale_lo, scale_hi, num_scales)
+            order = _center_out_order(num_scales) if roi_padding is None else list(range(num_scales))
+
+            level_best_conf = -1.0
+            level_best_scale = best_scale
+            level_best_loc = (0, 0)
+            level_best_tw, level_best_th = self._w, self._h
+
+            for i in order:
+                s = scales[i]
+                eff_scale = s / ds
+                tmpl, mask, tw, th = self._resize_template(eff_scale)
+                if tw > scr.shape[1] or th > scr.shape[0]:
+                    continue
+                if tw < 4 or th < 4:
+                    continue
+
+                if use_sad:
+                    conf, loc = self._run_match_sad(scr, tmpl, mask, self._has_mask)
+                else:
+                    conf, loc = self._run_match_cv(scr, tmpl, mask, self._has_mask)
+
+                if conf > level_best_conf:
+                    level_best_conf = conf
+                    level_best_scale = s
+                    level_best_loc = (loc[0] + roi_ox, loc[1] + roi_oy)
+                    level_best_tw, level_best_th = tw, th
+                if conf >= _EARLY_STOP_CONF:
+                    break
+
+            best_scale = level_best_scale
+            best_loc = level_best_loc
+            best_tw = level_best_tw
+            best_th = level_best_th
+            prev_ds = ds
+
+            step = (scale_hi - scale_lo) / max(num_scales, 1)
+            scale_lo = max(min_scale, best_scale - step)
+            scale_hi = min(max_scale, best_scale + step)
+
+        if level_best_conf >= self.threshold:
             x, y = best_loc
             return MatchResult(
                 x=x, y=y, width=best_tw, height=best_th,
                 center_x=x + best_tw // 2, center_y=y + best_th // 2,
-                confidence=best_conf,
+                confidence=level_best_conf,
             )
         return None
 
