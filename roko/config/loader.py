@@ -10,9 +10,29 @@ import yaml
 from .models import AppConfig, ScheduleConfig, ScheduleType, TaskConfig, TaskOptions
 
 
+class _SafeEnumLoader(yaml.SafeLoader):
+    """SafeLoader that handles !!python/object/apply tags for known enums
+    instead of raising an error. This allows loading YAML files that were
+    saved with Pydantic model_dump() enum instances."""
+    pass
+
+
+def _apply_constructor(loader, node):
+    """Convert !!python/object/apply:... sequences back to plain strings."""
+    args = loader.construct_sequence(node)
+    return args[0] if args else None
+
+
+# Register for any !!python/object/apply tag
+_SafeEnumLoader.add_multi_constructor(
+    "tag:yaml.org,2002:python/object/apply:",
+    lambda loader, suffix, node: _apply_constructor(loader, node),
+)
+
+
 def load_yaml(path: Path) -> Dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+        return yaml.load(f, Loader=_SafeEnumLoader) or {}
 
 
 def load_server_config(path: Path) -> AppConfig:
@@ -21,16 +41,34 @@ def load_server_config(path: Path) -> AppConfig:
     return AppConfig(**data)
 
 
-def load_task_config(path: Path) -> TaskConfig:
-    """Load a task YAML file into TaskConfig."""
-    data = load_yaml(path)
+def load_task_config(path: Path, auto_fix: bool = True) -> TaskConfig:
+    """Load a task YAML file into TaskConfig.
+
+    If auto_fix is True, re-saves the file in clean format when it contained
+    Python-tagged YAML (e.g. !!python/object/apply enum tags).
+    """
+    raw_text = path.read_text(encoding="utf-8")
+    data = yaml.load(raw_text, Loader=_SafeEnumLoader) or {}
 
     # If it looks like a legacy config (has top-level schedule+commands, no name),
     # migrate it automatically.
     if "name" not in data and "schedule" in data and "commands" in data:
         return migrate_legacy_config(data, path)
 
-    return TaskConfig(**data)
+    config = TaskConfig(**data)
+
+    # Auto-fix: re-save if the file contained Python-specific YAML tags
+    if auto_fix and "!!python/" in raw_text:
+        try:
+            clean_data = config.model_dump(mode="json", exclude_none=True)
+            with path.open("w", encoding="utf-8") as f:
+                yaml.dump(clean_data, f, default_flow_style=False,
+                          allow_unicode=True, sort_keys=False)
+            print(f"[INFO] Auto-fixed task file: {path}")
+        except Exception:
+            pass  # Non-critical, loading already succeeded
+
+    return config
 
 
 def load_tasks_from_directory(tasks_dir: Path) -> List[TaskConfig]:
