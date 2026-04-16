@@ -34,6 +34,7 @@ def execute_commands(
     mouse_move_default_duration_sec: float,
     mouse_move_default_wobble: float,
     config_dir: Path = Path("."),
+    commands_dir: Path | None = None,
     _depth: int = 0,
     _seen_files: set = None,
 ) -> None:
@@ -53,11 +54,30 @@ def execute_commands(
             if _depth >= MAX_FILE_INCLUDE_DEPTH:
                 raise ValueError(f"commands[{idx}]: nested 'file' includes exceed max depth {MAX_FILE_INCLUDE_DEPTH}")
             raw_path = str(cmd.get("path", "")).strip()
-            if not raw_path:
-                raise ValueError(f"commands[{idx}].path is required for type: file")
-            file_path = Path(raw_path)
-            if not file_path.is_absolute():
-                file_path = config_dir / file_path
+            raw_name = str(cmd.get("name", "")).strip()
+            if not raw_path and not raw_name:
+                raise ValueError(f"commands[{idx}]: 'path' or 'name' is required for type: file")
+            if raw_path:
+                file_path = Path(raw_path)
+                if not file_path.is_absolute():
+                    file_path = config_dir / file_path
+                    # Fallback: try commands_dir if not found in config_dir
+                    if not file_path.exists() and commands_dir:
+                        alt = commands_dir / raw_path
+                        if alt.exists():
+                            file_path = alt
+            else:
+                # Resolve by name from commands_dir
+                if not commands_dir:
+                    raise ValueError(f"commands[{idx}]: cannot resolve name '{raw_name}' without commands_dir")
+                file_path = None
+                for ext in (".yaml", ".yml"):
+                    candidate = commands_dir / (raw_name + ext)
+                    if candidate.exists():
+                        file_path = candidate
+                        break
+                if file_path is None:
+                    raise FileNotFoundError(f"commands[{idx}]: command file '{raw_name}' not found in {commands_dir}")
             file_path = file_path.resolve()
             if _seen_files is None:
                 _seen_files = set()
@@ -78,6 +98,7 @@ def execute_commands(
                     mouse_move_default_duration_sec=mouse_move_default_duration_sec,
                     mouse_move_default_wobble=mouse_move_default_wobble,
                     config_dir=file_path.parent,
+                    commands_dir=commands_dir,
                     _depth=_depth + 1,
                     _seen_files=seen,
                 )

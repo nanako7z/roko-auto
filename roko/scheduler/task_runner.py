@@ -20,11 +20,13 @@ class TaskRunner:
     """Manages execution of a single task in a daemon thread."""
 
     def __init__(self, config: TaskConfig, kbd: Any, mouse: Any,
-                 config_dir: Path = Path(".")) -> None:
+                 config_dir: Path = Path("."),
+                 commands_dir: Path | None = None) -> None:
         self.config = config
         self.kbd = kbd
         self.mouse = mouse
         self.config_dir = config_dir
+        self.commands_dir = commands_dir
 
         self.status = TaskStatus(name=config.name)
         self.scheduler = ScheduleCalculator(config.schedule)
@@ -147,6 +149,7 @@ class TaskRunner:
                 mouse_move_default_duration_sec=self.config.options.mouse_move_default_duration_sec,
                 mouse_move_default_wobble=self.config.options.mouse_move_default_wobble,
                 config_dir=self.config_dir,
+                commands_dir=self.commands_dir,
             )
         except Exception as e:
             self.status.last_error = str(e)

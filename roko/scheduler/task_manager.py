@@ -17,11 +17,13 @@ class TaskManager:
     """Central manager for all task lifecycles."""
 
     def __init__(self, kbd: Any, mouse: Any, config_dir: Path = Path("."),
-                 tasks_dir: Optional[Path] = None) -> None:
+                 tasks_dir: Optional[Path] = None,
+                 commands_dir: Optional[Path] = None) -> None:
         self.kbd = kbd
         self.mouse = mouse
         self.config_dir = config_dir
         self.tasks_dir = tasks_dir  # Where to persist task YAML files
+        self.commands_dir = commands_dir
         self._tasks: Dict[str, TaskRunner] = {}
         self._lock = threading.RLock()
 
@@ -31,7 +33,7 @@ class TaskManager:
         with self._lock:
             if config.name in self._tasks:
                 raise ValueError(f"Task '{config.name}' already exists")
-            runner = TaskRunner(config, self.kbd, self.mouse, self.config_dir)
+            runner = TaskRunner(config, self.kbd, self.mouse, self.config_dir, self.commands_dir)
             self._tasks[config.name] = runner
             if persist:
                 self._save_task_file(config)
@@ -60,7 +62,7 @@ class TaskManager:
             self._delete_task_file(name)
 
         # Re-create with new config
-        new_runner = TaskRunner(config, self.kbd, self.mouse, self.config_dir)
+        new_runner = TaskRunner(config, self.kbd, self.mouse, self.config_dir, self.commands_dir)
         with self._lock:
             self._tasks[config.name] = new_runner
             self._save_task_file(config)

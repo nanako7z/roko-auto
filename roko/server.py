@@ -68,7 +68,12 @@ def start_server(config_path: Path = None) -> None:
     tasks_dir = Path(cfg.tasks_dir)
     if not tasks_dir.is_absolute():
         tasks_dir = config_dir / tasks_dir
-    task_manager = TaskManager(kbd, mouse, config_dir=config_dir, tasks_dir=tasks_dir)
+    commands_dir = Path(cfg.commands_dir)
+    if not commands_dir.is_absolute():
+        commands_dir = config_dir / commands_dir
+    commands_dir.mkdir(parents=True, exist_ok=True)
+    task_manager = TaskManager(kbd, mouse, config_dir=config_dir, tasks_dir=tasks_dir,
+                               commands_dir=commands_dir)
 
     # Load tasks from directory
     task_configs = load_tasks_from_directory(tasks_dir)
@@ -87,10 +92,6 @@ def start_server(config_path: Path = None) -> None:
     app_state.driver_type = driver_type
     app_state.started_at = datetime.now()
     app_state.config_dir = config_dir
-    commands_dir = Path(cfg.commands_dir)
-    if not commands_dir.is_absolute():
-        commands_dir = config_dir / commands_dir
-    commands_dir.mkdir(parents=True, exist_ok=True)
     app_state.commands_dir = commands_dir
 
     app = create_app()

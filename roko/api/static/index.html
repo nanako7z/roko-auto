@@ -279,7 +279,7 @@ function cmdSummary(cmd){
     case 'mouse_click': return `点击 <span>${({left:'左键',right:'右键',middle:'中键'})[cmd.button]||cmd.button}</span>`+(cmd.hold_sec?` 保持${cmd.hold_sec}s`:'');
     case 'mouse_move': return (cmd.absolute?'移动到':'相对移动')+` <span>(${cmd.x},${cmd.y})</span>`+(cmd.duration?` ${cmd.duration}s`:'');
     case 'mouse_scroll': return `滚轮 <span>${cmd.amount>0?'上':'下'} ${Math.abs(cmd.amount||0)}</span> 格`;
-    case 'file': return `引用 <span>${esc(cmd.path||'')}</span>`;
+    case 'file': return `引用 <span>${esc(cmd.name||cmd.path||'')}</span>`;
     default: return JSON.stringify(cmd);
   }
 }
@@ -308,8 +308,8 @@ function cmdFormHtml(type,existing,cid,ns,editIdx){
     case 'mouse_scroll':
       f=`<div class="form-group"><label>滚动量（正=上，负=下）</label><input type="number" id="${cid}_f_amt" value="${v.amount||3}" step="1"></div>`;break;
     case 'file':
-      const opts=cmdFiles.map(cf=>`<option value="${cf.filename}"${v.path===cf.filename?' selected':''}>${cf.name} (${cf.command_count}条)</option>`).join('');
-      f=`<div class="form-group"><label>选择命令文件</label><select id="${cid}_f_path"><option value="">-- 请选择 --</option>${opts}</select></div>
+      const opts=cmdFiles.map(cf=>`<option value="${cf.name}"${(v.name===cf.name||v.path===cf.filename)?' selected':''}>${cf.name} (${cf.command_count}条)</option>`).join('');
+      f=`<div class="form-group"><label>选择命令文件</label><select id="${cid}_f_name"><option value="">-- 请选择 --</option>${opts}</select></div>
         <div class="form-group"><label>或手动输入路径</label><input type="text" id="${cid}_f_path_manual" value="${v.path||''}" placeholder="commands/xxx.yaml"></div>`;break;
   }
   const cancelFn=`document.getElementById('${cid}_addForm').innerHTML=''`;
@@ -328,7 +328,7 @@ function collectCmd(type,cid){
     case 'mouse_click': cmd.button=g('btn').value; if(g('hold')?.value)cmd.hold_sec=parseFloat(g('hold').value); break;
     case 'mouse_move': cmd.x=parseInt(g('x').value)||0;cmd.y=parseInt(g('y').value)||0; if(g('abs').value==='true')cmd.absolute=true; if(g('dur')?.value)cmd.duration=parseFloat(g('dur').value); if(g('wob')?.value)cmd.wobble=parseFloat(g('wob').value); break;
     case 'mouse_scroll': cmd.amount=parseInt(g('amt').value)||3; break;
-    case 'file': cmd.path=g('path').value||g('path_manual').value; if(!cmd.path){toast('请选择或输入命令文件','error');return null;} break;
+    case 'file': {const n=g('name')?.value,p=g('path_manual')?.value; if(n)cmd.name=n; else if(p)cmd.path=p; else{toast('请选择或输入命令文件','error');return null;} break;}
   }
   return cmd;
 }
