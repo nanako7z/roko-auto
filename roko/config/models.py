@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class ScheduleType(str, Enum):
@@ -51,6 +51,9 @@ class SentinelConfig(BaseModel):
     scan_interval_ms: int = 1000  # Scan interval in milliseconds
     match_threshold: float = 0.8  # Match confidence threshold 0.0-1.0
     scan_region: Optional[List[int]] = None  # Optional [left, top, width, height]
+    # Position dedup: if True (default), same position is ignored until
+    # the pattern disappears and reappears.  If False, every match triggers.
+    repeat_cooldown: bool = True
 
     @field_validator("scan_interval_ms")
     @classmethod
@@ -75,6 +78,7 @@ class SentinelConfig(BaseModel):
             if v[2] <= 0 or v[3] <= 0:
                 raise ValueError("scan_region width and height must be > 0")
         return v
+
 
 
 class TaskOptions(BaseModel):
@@ -108,23 +112,6 @@ class TaskConfig(BaseModel):
         if not v:
             raise ValueError("task name must not be empty")
         return v
-
-    # Sentinel-only command types
-    _SENTINEL_ONLY_COMMANDS = {"move_to_match"}
-
-    @model_validator(mode="after")
-    def check_sentinel_commands(self) -> "TaskConfig":
-        """Non-sentinel tasks must not use sentinel-only commands."""
-        is_sentinel = self.schedule.type == ScheduleType.sentinel
-        if is_sentinel:
-            return self
-        for idx, cmd in enumerate(self.commands, start=1):
-            ctype = str(cmd.get("type", "")).strip().lower()
-            if ctype in self._SENTINEL_ONLY_COMMANDS:
-                raise ValueError(
-                    f"commands[{idx}]: '{ctype}' can only be used in sentinel tasks"
-                )
-        return self
 
     def has_commands(self) -> bool:
         return bool(self.commands) or bool(self.command_file)

@@ -36,6 +36,8 @@ def execute_commands(
     config_dir: Path = Path("."),
     commands_dir: Path | None = None,
     match_result: Any = None,
+    templates_dir: Path | None = None,
+    screen_capture: Any = None,
     _depth: int = 0,
     _seen_files: set = None,
 ) -> None:
@@ -101,6 +103,8 @@ def execute_commands(
                     config_dir=file_path.parent,
                     commands_dir=commands_dir,
                     match_result=match_result,
+                    templates_dir=templates_dir,
+                    screen_capture=screen_capture,
                     _depth=_depth + 1,
                     _seen_files=seen,
                 )
@@ -166,16 +170,47 @@ def execute_commands(
             continue
 
         if ctype == "move_to_match":
-            if match_result is None:
-                raise ValueError(
-                    f"commands[{idx}]: move_to_match can only be used in sentinel tasks"
-                )
+            # In sentinel tasks: use the already-matched result directly.
+            # In normal tasks: do a live screenshot + template match.
+            mr = match_result
+            if mr is None:
+                # Live matching for normal tasks
+                template_image = str(cmd.get("template_image", "")).strip()
+                if not template_image:
+                    raise ValueError(
+                        f"commands[{idx}]: move_to_match requires 'template_image' "
+                        f"in non-sentinel tasks"
+                    )
+                if not templates_dir:
+                    raise ValueError(
+                        f"commands[{idx}]: templates_dir not configured"
+                    )
+                if not screen_capture:
+                    raise ValueError(
+                        f"commands[{idx}]: screen_capture not available"
+                    )
+                from ..screen.matcher import TemplateMatcher
+                tmpl_path = templates_dir / template_image
+                if not tmpl_path.exists():
+                    for ext in (".png", ".jpg", ".jpeg"):
+                        candidate = templates_dir / (template_image + ext)
+                        if candidate.exists():
+                            tmpl_path = candidate
+                            break
+                threshold = float(cmd.get("match_threshold", 0.8))
+                m = TemplateMatcher(tmpl_path, threshold=threshold)
+                screenshot = screen_capture.capture(format="png")
+                mr = m.match(screenshot)
+                if mr is None:
+                    print(f"  commands[{idx}]: move_to_match — no match found, skipping")
+                    continue
+
             duration = float(cmd.get("duration", mouse_move_default_duration_sec))
             wobble = float(cmd.get("wobble", mouse_move_default_wobble))
             offset_x = int(cmd.get("offset_x", 0))
             offset_y = int(cmd.get("offset_y", 0))
-            target_x = match_result.center_x + offset_x
-            target_y = match_result.center_y + offset_y
+            target_x = mr.center_x + offset_x
+            target_y = mr.center_y + offset_y
             if duration > 0:
                 _human_move(mouse, target_x, target_y, duration, wobble)
             else:
