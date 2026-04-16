@@ -65,12 +65,12 @@ def start_server(config_path: Path = None) -> None:
         screen_capture = None
 
     # Init task manager
-    task_manager = TaskManager(kbd, mouse, config_dir=config_dir)
-
-    # Load tasks from directory
     tasks_dir = Path(cfg.tasks_dir)
     if not tasks_dir.is_absolute():
         tasks_dir = config_dir / tasks_dir
+    task_manager = TaskManager(kbd, mouse, config_dir=config_dir, tasks_dir=tasks_dir)
+
+    # Load tasks from directory
     task_configs = load_tasks_from_directory(tasks_dir)
     for tc in task_configs:
         try:

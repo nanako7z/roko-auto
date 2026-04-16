@@ -42,7 +42,7 @@ def create_task(req: TaskCreateRequest):
     """Create a new task."""
     config = TaskConfig(**req.model_dump())
     try:
-        status = app_state.task_manager.add_task(config)
+        status = app_state.task_manager.add_task(config, persist=True)
         return {"status": status.model_dump(), "message": f"Task '{config.name}' created"}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
