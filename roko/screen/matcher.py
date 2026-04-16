@@ -144,41 +144,44 @@ class TemplateMatcher:
         return None
 
     # ------------------------------------------------------------------
-    # Phase 1: Coarse multi-scale at half resolution
+    # Multi-scale scan with iterative refinement
     # ------------------------------------------------------------------
 
-    def _coarse_scale_scan(
-        self, screen_bgr: np.ndarray
+    # Pyramid passes: (downsample_factor, num_scales)
+    # Each pass narrows the scale range around the previous best.
+    _PASSES = [
+        (4, 11),   # Pass 1: 1/4 res, 11 scales — broad sweep
+        (2, 7),    # Pass 2: 1/2 res,  7 scales — narrow
+        (1, 5),    # Pass 3: full res,  5 scales — precise (with ROI)
+    ]
+
+    def _scan_scales(
+        self,
+        screen: np.ndarray,
+        ds: int,
+        scales: np.ndarray,
     ) -> tuple[float, float, tuple[int, int], int, int]:
-        """Scan 7 scales at half resolution.
+        """Run matchTemplate at each scale on *screen* (already downsampled by ds).
 
-        Returns (best_scale, best_conf, best_loc_in_half, tw_in_half, th_in_half).
+        Returns (best_scale, best_conf, best_loc, tw_at_ds, th_at_ds).
         """
-        sh, sw = screen_bgr.shape[:2]
-        half_w, half_h = sw // 2, sh // 2
-        half_screen = cv2.resize(screen_bgr, (half_w, half_h), interpolation=cv2.INTER_AREA)
-
-        min_scale, max_scale = self._scale_range(sw, sh)
-        if min_scale > max_scale:
-            return 1.0, -1.0, (0, 0), self._w, self._h
-
-        scales = np.linspace(min_scale, max_scale, 7)
+        scr_h, scr_w = screen.shape[:2]
 
         best_conf = -1.0
-        best_scale = 1.0
+        best_scale = float(scales[len(scales) // 2])
         best_loc: tuple[int, int] = (0, 0)
         best_tw, best_th = self._w, self._h
 
         for s in scales:
-            eff_scale = s / 2  # template scale for half-resolution screen
+            eff_scale = s / ds
             tmpl, mask3, tw, th = self._resize_template_with_mask3(eff_scale)
-            if tw < 4 or th < 4 or tw > half_w or th > half_h:
+            if tw < 4 or th < 4 or tw > scr_w or th > scr_h:
                 continue
 
-            conf, loc = self._cv_match(half_screen, tmpl, mask3)
+            conf, loc = self._cv_match(screen, tmpl, mask3)
             if conf > best_conf:
                 best_conf = conf
-                best_scale = s
+                best_scale = float(s)
                 best_loc = loc
                 best_tw, best_th = tw, th
             if conf >= 0.95:
@@ -186,88 +189,88 @@ class TemplateMatcher:
 
         return best_scale, best_conf, best_loc, best_tw, best_th
 
-    # ------------------------------------------------------------------
-    # Phase 2: Fine refinement at full resolution with ROI
-    # ------------------------------------------------------------------
+    def _iterative_multiscale(self, screen_bgr: np.ndarray) -> Optional[MatchResult]:
+        """Iterative coarse-to-fine multi-scale search.
 
-    def _fine_refine(
-        self,
-        screen_bgr: np.ndarray,
-        est_scale: float,
-        coarse_loc: tuple[int, int],
-        coarse_tw: int,
-        coarse_th: int,
-    ) -> tuple[float, tuple[int, int], int, int]:
-        """Refine around estimated scale at full resolution in a tight ROI.
-
-        Returns (confidence, (x, y) in full coords, tw, th).
+        Pass 1: 1/4 res, 11 scales over full range — find approximate scale
+        Pass 2: 1/2 res,  7 scales over narrowed range — refine scale
+        Pass 3: full res,  5 scales over tight range + ROI — precise result
         """
         sh, sw = screen_bgr.shape[:2]
         min_scale, max_scale = self._scale_range(sw, sh)
+        if min_scale > max_scale:
+            return None
 
-        # 3 fine scales around the estimate
-        delta = (max_scale - min_scale) / 14
-        fine_scales = [
-            max(min_scale, est_scale - delta),
-            est_scale,
-            min(max_scale, est_scale + delta),
-        ]
-
-        # ROI around coarse location (mapped to full resolution: *2)
-        cx = coarse_loc[0] * 2 + coarse_tw * 2
-        cy = coarse_loc[1] * 2 + coarse_th * 2
-        margin = max(coarse_tw * 4, coarse_th * 4, 200)
-
-        x0 = max(0, cx - margin)
-        y0 = max(0, cy - margin)
-        x1 = min(sw, cx + margin)
-        y1 = min(sh, cy + margin)
-        roi = screen_bgr[y0:y1, x0:x1]
-
+        scale_lo, scale_hi = min_scale, max_scale
+        best_scale = (min_scale + max_scale) / 2
         best_conf = -1.0
         best_loc: tuple[int, int] = (0, 0)
         best_tw, best_th = self._w, self._h
+        prev_ds = 1
 
-        for s in fine_scales:
-            tmpl, mask3, tw, th = self._resize_template_with_mask3(s)
-            if tw > roi.shape[1] or th > roi.shape[0] or tw < 4 or th < 4:
-                continue
+        for ds, num_scales in self._PASSES:
+            # Downsample screenshot
+            if ds > 1:
+                scr = cv2.resize(
+                    screen_bgr, (sw // ds, sh // ds),
+                    interpolation=cv2.INTER_AREA,
+                )
+            else:
+                scr = screen_bgr
 
-            conf, loc = self._cv_match(roi, tmpl, mask3)
-            if conf > best_conf:
-                best_conf = conf
-                best_loc = (loc[0] + x0, loc[1] + y0)
-                best_tw, best_th = tw, th
+            # For the full-res pass, extract ROI around previous best location
+            roi_ox, roi_oy = 0, 0
+            if ds == 1 and best_conf > 0:
+                ratio = prev_ds  # previous pass downsample factor
+                cx = best_loc[0] * ratio + best_tw * ratio // 2
+                cy = best_loc[1] * ratio + best_th * ratio // 2
+                margin = max(best_tw * ratio * 3, best_th * ratio * 3, 300)
+                x0 = max(0, cx - margin)
+                y0 = max(0, cy - margin)
+                x1 = min(sw, cx + margin)
+                y1 = min(sh, cy + margin)
+                scr = scr[y0:y1, x0:x1]
+                roi_ox, roi_oy = x0, y0
 
-        return best_conf, best_loc, best_tw, best_th
+            scales = np.linspace(scale_lo, scale_hi, num_scales)
+            p_scale, p_conf, p_loc, p_tw, p_th = self._scan_scales(scr, ds, scales)
+
+            if p_conf > best_conf:
+                best_conf = p_conf
+                best_scale = p_scale
+                best_loc = (p_loc[0] + roi_ox, p_loc[1] + roi_oy) if ds == 1 else p_loc
+                best_tw, best_th = p_tw * ds, p_th * ds  # map to full-res dimensions
+
+            # Narrow scale range for next pass
+            step = (scale_hi - scale_lo) / max(num_scales - 1, 1)
+            scale_lo = max(min_scale, best_scale - step)
+            scale_hi = min(max_scale, best_scale + step)
+            prev_ds = ds
+
+        if best_conf >= self.threshold:
+            # Re-derive template size at best scale for accurate dimensions
+            final_tw = max(1, int(self._w * best_scale))
+            final_th = max(1, int(self._h * best_scale))
+            x, y = best_loc
+            return MatchResult(
+                x=x, y=y, width=final_tw, height=final_th,
+                center_x=x + final_tw // 2, center_y=y + final_th // 2,
+                confidence=best_conf,
+            )
+        return None
 
     # ------------------------------------------------------------------
     # Multi-scale matching (orchestrator)
     # ------------------------------------------------------------------
 
     def _multiscale_match(self, screen_bgr: np.ndarray) -> Optional[MatchResult]:
-        # Phase 0: direct match at scale 1.0
+        # Fast path: direct match at scale 1.0
         result = self._try_direct_match(screen_bgr)
         if result is not None:
             return result
 
-        # Phase 1: coarse scan at half resolution
-        est_scale, coarse_conf, coarse_loc, c_tw, c_th = self._coarse_scale_scan(screen_bgr)
-
-        if coarse_conf < 0:
-            return None
-
-        # Phase 2: fine refinement at full resolution
-        conf, loc, tw, th = self._fine_refine(screen_bgr, est_scale, coarse_loc, c_tw, c_th)
-
-        if conf >= self.threshold:
-            x, y = loc
-            return MatchResult(
-                x=x, y=y, width=tw, height=th,
-                center_x=x + tw // 2, center_y=y + th // 2,
-                confidence=conf,
-            )
-        return None
+        # Iterative coarse-to-fine multi-scale search
+        return self._iterative_multiscale(screen_bgr)
 
     # ------------------------------------------------------------------
     # Public API
