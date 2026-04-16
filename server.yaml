@@ -1,0 +1,15 @@
+# roko-auto 服务端配置
+
+server:
+  host: 0.0.0.0
+  port: 8642
+
+driver:
+  dll_path: interception.dll
+
+screen:
+  capture_method: mss
+  max_fps: 2
+
+tasks_dir: ./tasks
+commands_dir: ./commands

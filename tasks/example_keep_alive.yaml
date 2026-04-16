@@ -1,0 +1,23 @@
+# 示例任务：保持活跃（定期按键）
+
+name: keep_alive
+enabled: false
+
+schedule:
+  type: interval
+  interval_sec: 20
+  jitter_sec: 5
+  start_delay_sec: 3
+
+options:
+  default_hold_sec: 0.03
+  mouse_move_default_duration_sec: 0
+  mouse_move_default_wobble: 0.2
+
+commands:
+  - type: key
+    key: tab
+  - type: wait
+    sec: 2
+  - type: key
+    key: "2"
