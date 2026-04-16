@@ -26,6 +26,7 @@ class TaskManager:
         self.commands_dir = commands_dir
         self._tasks: Dict[str, TaskRunner] = {}
         self._lock = threading.RLock()
+        self._exec_lock = threading.Lock()  # Serializes command execution across tasks
 
     def add_task(self, config: TaskConfig,
                  persist: bool = False) -> TaskStatus:
@@ -33,7 +34,8 @@ class TaskManager:
         with self._lock:
             if config.name in self._tasks:
                 raise ValueError(f"Task '{config.name}' already exists")
-            runner = TaskRunner(config, self.kbd, self.mouse, self.config_dir, self.commands_dir)
+            runner = TaskRunner(config, self.kbd, self.mouse, self.config_dir, self.commands_dir,
+                                exec_lock=self._exec_lock)
             self._tasks[config.name] = runner
             if persist:
                 self._save_task_file(config)
@@ -62,7 +64,8 @@ class TaskManager:
             self._delete_task_file(name)
 
         # Re-create with new config
-        new_runner = TaskRunner(config, self.kbd, self.mouse, self.config_dir, self.commands_dir)
+        new_runner = TaskRunner(config, self.kbd, self.mouse, self.config_dir, self.commands_dir,
+                                exec_lock=self._exec_lock)
         with self._lock:
             self._tasks[config.name] = new_runner
             self._save_task_file(config)

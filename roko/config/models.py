@@ -50,6 +50,7 @@ class TaskOptions(BaseModel):
     pause_between_cycles_sec: float = 0.0
     mouse_move_default_duration_sec: float = 0.8
     mouse_move_default_wobble: float = 0.1
+    compensate_queue_wait: bool = True  # Subtract queue wait time from next interval
 
     @field_validator("default_hold_sec", "pause_between_cycles_sec",
                      "mouse_move_default_duration_sec", "mouse_move_default_wobble")

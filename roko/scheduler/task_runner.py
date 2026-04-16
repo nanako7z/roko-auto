@@ -21,12 +21,14 @@ class TaskRunner:
 
     def __init__(self, config: TaskConfig, kbd: Any, mouse: Any,
                  config_dir: Path = Path("."),
-                 commands_dir: Path | None = None) -> None:
+                 commands_dir: Path | None = None,
+                 exec_lock: threading.Lock | None = None) -> None:
         self.config = config
         self.kbd = kbd
         self.mouse = mouse
         self.config_dir = config_dir
         self.commands_dir = commands_dir
+        self._exec_lock = exec_lock
 
         self.status = TaskStatus(name=config.name)
         self.scheduler = ScheduleCalculator(config.schedule)
@@ -95,7 +97,7 @@ class TaskRunner:
                     break
 
                 started_at = time.time()
-                self._execute_cycle()
+                wait_time = self._execute_cycle()
 
                 if self._stop_event.is_set():
                     break
@@ -108,6 +110,8 @@ class TaskRunner:
 
                 # Calculate next delay
                 elapsed = time.time() - started_at
+                if not self.config.options.compensate_queue_wait:
+                    elapsed -= wait_time
                 delay = self.scheduler.next_delay(elapsed)
                 if delay is None:
                     self.status.state = TaskState.completed
@@ -133,13 +137,22 @@ class TaskRunner:
             self.status.last_error = traceback.format_exc()
             print(f"[{self.name}] Task error: {e}")
 
-    def _execute_cycle(self) -> None:
+    def _execute_cycle(self) -> float:
+        """Execute one cycle. Returns seconds spent waiting for the exec lock."""
         self.status.cycle_count += 1
         self.status.last_run = datetime.now()
         print(f"[{self.name}] Cycle {self.status.cycle_count} started")
 
         commands = self._resolve_commands()
 
+        lock = self._exec_lock
+        wait_time = 0.0
+        if lock:
+            t0 = time.time()
+            lock.acquire()
+            wait_time = time.time() - t0
+            if wait_time > 0.01:
+                print(f"[{self.name}] Waited {wait_time:.2f}s for exec lock")
         try:
             execute_commands(
                 self.kbd,
@@ -154,6 +167,10 @@ class TaskRunner:
         except Exception as e:
             self.status.last_error = str(e)
             print(f"[{self.name}] Command execution error: {e}")
+        finally:
+            if lock:
+                lock.release()
+        return wait_time
 
     def _resolve_commands(self) -> list:
         """Get command list — from inline config or command_file."""
