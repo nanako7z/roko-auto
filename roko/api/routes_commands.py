@@ -104,6 +104,51 @@ def delete_command_file(name: str) -> Dict[str, Any]:
     return {"message": f"Command file '{f.name}' deleted"}
 
 
+@router.post("/{name}/test")
+def test_command_file(name: str) -> Dict[str, Any]:
+    """Execute a command file once for testing."""
+    f = _resolve_file(name)
+    if not f:
+        raise HTTPException(status_code=404, detail=f"Command file '{name}' not found")
+
+    kbd = app_state.kbd
+    mouse = app_state.mouse
+    if not kbd or not mouse:
+        raise HTTPException(status_code=503, detail="Input devices not available")
+
+    with f.open("r", encoding="utf-8") as fh:
+        data = yaml.safe_load(fh) or {}
+    commands = data.get("commands", [])
+    if not commands:
+        raise HTTPException(status_code=400, detail="Command file has no commands")
+
+    import threading
+    from ..commands.executor import execute_commands
+    from ..config.models import TaskOptions
+
+    opts = TaskOptions()
+    commands_dir = app_state.commands_dir
+
+    def _run():
+        try:
+            execute_commands(
+                kbd, mouse, commands,
+                default_hold_sec=opts.default_hold_sec,
+                mouse_move_default_duration_sec=opts.mouse_move_default_duration_sec,
+                mouse_move_default_wobble=opts.mouse_move_default_wobble,
+                config_dir=commands_dir or f.parent,
+                commands_dir=commands_dir,
+            )
+            print(f"[TEST] Command '{name}' executed successfully.")
+        except Exception as e:
+            print(f"[TEST] Command '{name}' error: {e}")
+
+    t = threading.Thread(target=_run, daemon=True, name=f"test-{name}")
+    t.start()
+
+    return {"message": f"Command '{name}' test started", "command_count": len(commands)}
+
+
 def _resolve_file(name: str):
     """Find a command file by stem name."""
     commands_dir = app_state.commands_dir

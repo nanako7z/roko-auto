@@ -541,7 +541,7 @@ function renderCmdFiles(){
   const el=document.getElementById('cmdFileList');
   if(!cmdFiles.length){el.innerHTML='<div class="empty-state"><div class="icon">&#9998;</div><p>暂无命令文件</p><button class="btn btn-primary" onclick="openCmdFileModal()">+ 创建第一个命令</button></div>';return;}
   el.innerHTML=cmdFiles.map(f=>`<div class="cmd-file-card"><div class="cmd-file-info"><div class="cmd-file-name">${esc(f.name)}${f.source==='recording'?'<span class="source-badge">&#9210; 录制</span>':''}</div><div class="cmd-file-meta">${f.filename} · ${f.command_count} 条动作${f.event_count?' · '+f.event_count+' 事件':''}</div></div>
-    <div class="task-actions"><button class="btn btn-sm" onclick="editCmdFile('${esc(f.name)}')">编辑</button><button class="btn btn-sm btn-danger btn-icon" onclick="deleteCmdFile('${esc(f.name)}')" title="删除">&times;</button></div></div>`).join('');
+    <div class="task-actions"><button class="btn btn-sm btn-success" onclick="testCmdFile('${esc(f.name)}')">测试</button><button class="btn btn-sm" onclick="editCmdFile('${esc(f.name)}')">编辑</button><button class="btn btn-sm btn-danger btn-icon" onclick="deleteCmdFile('${esc(f.name)}')" title="删除">&times;</button></div></div>`).join('');
 }
 function openCmdFileModal(data=null){
   editingCmdFile=data;
@@ -563,6 +563,7 @@ async function saveCmdFile(){
     closeCmdFileModal();refreshCmdFiles();
   }catch(e){}
 }
+async function testCmdFile(n){try{const r=await api(`/api/commands/${encodeURIComponent(n)}/test`,{method:'POST'});toast(`命令"${n}"已发送执行（${r.command_count} 条）`,'success');}catch(e){}}
 async function deleteCmdFile(n){if(!confirm(`确认删除命令"${n}"？`))return;try{await api(`/api/commands/${encodeURIComponent(n)}`,{method:'DELETE'});toast(`命令"${n}" 已删除`,'success');refreshCmdFiles();}catch(e){}}
 
 /* ══════════════════════════════════════════
