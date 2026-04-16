@@ -13,6 +13,16 @@ from .deps import app_state
 router = APIRouter(prefix="/api/commands", tags=["commands"])
 
 
+def _validate_name(name: str) -> str:
+    """Validate a file name to prevent path traversal."""
+    name = name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name must not be empty")
+    if ".." in name or "/" in name or "\\" in name:
+        raise HTTPException(status_code=400, detail="Name contains invalid characters")
+    return name
+
+
 class CommandFileRequest(BaseModel):
     name: str
     commands: List[Dict[str, Any]]
@@ -60,6 +70,7 @@ def get_command_file(name: str) -> Dict[str, Any]:
 @router.post("")
 def create_command_file(req: CommandFileRequest) -> Dict[str, Any]:
     """Create a new command file."""
+    _validate_name(req.name)
     commands_dir = app_state.commands_dir
     if not commands_dir:
         raise HTTPException(status_code=500, detail="commands_dir not configured")

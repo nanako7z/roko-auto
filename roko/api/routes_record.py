@@ -20,9 +20,10 @@ class RecordStartRequest(BaseModel):
 
 
 class _RecorderState:
-    """Tracks the active recording session."""
+    """Tracks the active recording session (thread-safe)."""
 
     def __init__(self) -> None:
+        self._lock = threading.Lock()
         self.active = False
         self.name: str = ""
         self.output_path: Optional[Path] = None
@@ -33,14 +34,26 @@ class _RecorderState:
         self._stop_event = threading.Event()
 
     def reset(self) -> None:
-        self.active = False
-        self.name = ""
-        self.output_path = None
-        self.thread = None
-        self.event_count = 0
-        self.started_at = 0
-        self.error = None
-        self._stop_event.clear()
+        with self._lock:
+            self.active = False
+            self.name = ""
+            self.output_path = None
+            self.thread = None
+            self.event_count = 0
+            self.started_at = 0
+            self.error = None
+            self._stop_event.clear()
+
+    def snapshot(self) -> Dict[str, Any]:
+        """Return a consistent snapshot of state for the status endpoint."""
+        with self._lock:
+            return {
+                "active": self.active,
+                "name": self.name,
+                "event_count": self.event_count,
+                "elapsed": round(time.time() - self.started_at, 1) if self.active else 0,
+                "error": self.error,
+            }
 
 
 _state = _RecorderState()
@@ -49,48 +62,47 @@ _state = _RecorderState()
 @router.get("/status")
 def record_status() -> Dict[str, Any]:
     """Get current recording status."""
-    return {
-        "active": _state.active,
-        "name": _state.name,
-        "event_count": _state.event_count,
-        "elapsed": round(time.time() - _state.started_at, 1) if _state.active else 0,
-        "error": _state.error,
-    }
+    return _state.snapshot()
 
 
 @router.post("/start")
 def record_start(req: RecordStartRequest) -> Dict[str, Any]:
     """Start recording input on the controlled machine."""
-    if _state.active:
-        raise HTTPException(status_code=409, detail="Recording already in progress")
+    with _state._lock:
+        if _state.active:
+            raise HTTPException(status_code=409, detail="Recording already in progress")
 
-    if app_state.driver_type != "interception":
-        raise HTTPException(
-            status_code=503,
-            detail="Recording requires the Interception driver (current: "
-                   f"{app_state.driver_type})",
+        if app_state.driver_type != "interception":
+            raise HTTPException(
+                status_code=503,
+                detail="Recording requires the Interception driver (current: "
+                       f"{app_state.driver_type})",
+            )
+
+        name = req.name.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Recording name is required")
+        if ".." in name or "/" in name or "\\" in name:
+            raise HTTPException(status_code=400, detail="Recording name contains invalid characters")
+
+        commands_dir = app_state.commands_dir
+        if not commands_dir:
+            raise HTTPException(status_code=500, detail="commands_dir not configured")
+        commands_dir.mkdir(parents=True, exist_ok=True)
+        bin_path = commands_dir / f"{name}.bin"
+
+        _state._stop_event.clear()
+        _state.active = True
+        _state.name = name
+        _state.output_path = bin_path
+        _state.started_at = time.time()
+        _state.event_count = 0
+        _state.error = None
+
+        _state.thread = threading.Thread(
+            target=_record_worker, args=(bin_path,), daemon=True, name="recorder"
         )
-
-    name = req.name.strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Recording name is required")
-
-    commands_dir = app_state.commands_dir
-    if not commands_dir:
-        raise HTTPException(status_code=500, detail="commands_dir not configured")
-    commands_dir.mkdir(parents=True, exist_ok=True)
-    bin_path = commands_dir / f"{name}.bin"
-
-    _state.reset()
-    _state.active = True
-    _state.name = name
-    _state.output_path = bin_path
-    _state.started_at = time.time()
-
-    _state.thread = threading.Thread(
-        target=_record_worker, args=(bin_path,), daemon=True, name="recorder"
-    )
-    _state.thread.start()
+        _state.thread.start()
 
     return {"message": f"Recording '{name}' started", "output": str(bin_path)}
 
@@ -98,27 +110,39 @@ def record_start(req: RecordStartRequest) -> Dict[str, Any]:
 @router.post("/stop")
 def record_stop() -> Dict[str, Any]:
     """Stop the active recording and save to command library."""
-    if not _state.active:
-        raise HTTPException(status_code=409, detail="No recording in progress")
+    with _state._lock:
+        if not _state.active:
+            raise HTTPException(status_code=409, detail="No recording in progress")
+        name = _state.name
+        output_path = _state.output_path
 
     _state._stop_event.set()
 
     if _state.thread and _state.thread.is_alive():
         _state.thread.join(timeout=5.0)
 
-    if _state.error:
-        err = _state.error
+    # Check if thread is still alive after join timeout
+    if _state.thread and _state.thread.is_alive():
         _state.reset()
-        raise HTTPException(status_code=500, detail=f"Recording failed: {err}")
+        raise HTTPException(
+            status_code=500,
+            detail="Recording thread did not stop in time — recording may be incomplete",
+        )
 
-    result = {
-        "message": f"Recording '{_state.name}' saved",
-        "name": _state.name,
-        "event_count": _state.event_count,
-        "elapsed": round(time.time() - _state.started_at, 1),
-    }
+    with _state._lock:
+        if _state.error:
+            err = _state.error
+            _state.reset()
+            raise HTTPException(status_code=500, detail=f"Recording failed: {err}")
 
-    _save_recording_command(_state.name, _state.output_path, _state.event_count)
+        result = {
+            "message": f"Recording '{name}' saved",
+            "name": name,
+            "event_count": _state.event_count,
+            "elapsed": round(time.time() - _state.started_at, 1),
+        }
+
+    _save_recording_command(name, output_path, _state.event_count)
 
     _state.reset()
     return result
@@ -147,12 +171,14 @@ def _record_worker(output_path: Path) -> None:
         print(f"[REC] Recording '{_state.name}' finished: {count} events.")
 
     except Exception as e:
-        _state.error = str(e)
+        with _state._lock:
+            _state.error = str(e)
         print(f"[REC] Recording error: {e}")
     finally:
         if recorder:
             recorder.close()
-        _state.active = False
+        with _state._lock:
+            _state.active = False
 
 
 def _save_recording_command(name: str, bin_path: Path, event_count: int) -> None:

@@ -603,7 +603,7 @@ function taskToYaml(c){
   if(c.schedule.type==='cron')y+=`  cron_expression: "${c.schedule.cron_expression||'*/5 * * * *'}"\n`;
   if(c.schedule.jitter_sec)y+=`  jitter_sec: ${c.schedule.jitter_sec}\n`;
   if(c.schedule.start_delay_sec)y+=`  start_delay_sec: ${c.schedule.start_delay_sec}\n`;
-  y+=`\noptions:\n  default_hold_sec: ${c.options.default_hold_sec}\n  pause_between_cycles_sec: ${c.options.pause_between_cycles_sec}\n  mouse_move_default_duration_sec: ${c.options.mouse_move_default_duration_sec}\n  mouse_move_default_wobble: ${c.options.mouse_move_default_wobble}\n`;
+  y+=`\noptions:\n  default_hold_sec: ${c.options.default_hold_sec}\n  pause_between_cycles_sec: ${c.options.pause_between_cycles_sec}\n  mouse_move_default_duration_sec: ${c.options.mouse_move_default_duration_sec}\n  mouse_move_default_wobble: ${c.options.mouse_move_default_wobble}\n  compensate_queue_wait: ${c.options.compensate_queue_wait!==false}\n`;
   if(c.commands?.length)y+=`\ncommands:\n`+commandsToYaml(c.commands)+'\n';return y;
 }
 function buildYamlFromForm(){const p=buildPayloadFromForm();if(!p)return'';return taskToYaml({...p,options:p.options||{},schedule:p.schedule||{type:'interval'}});}
@@ -641,7 +641,7 @@ async function stopRecording(){
   try{
     const r=await api('/api/record/stop',{method:'POST'});
     toast(`录制"${r.name}"已保存，共 ${r.event_count} 个事件`,'success');
-  }catch(e){}
+  }catch(e){toast('停止录制失败：'+e.message,'error');}
   _resetRecUI();
 }
 
@@ -669,6 +669,7 @@ async function pollRecording(){
 refreshTasks();refreshSystem();
 setInterval(()=>{if(currentSection==='tasks')refreshTasks();refreshSystem();},5000);
 document.addEventListener('click',e=>{const sb=document.querySelector('.sidebar');if(sb&&!sb.contains(e.target))closeMobileNav();});
+window.addEventListener('beforeunload',()=>{if(recPolling)clearInterval(recPolling);if(monitorTimer)clearInterval(monitorTimer);});
 // Check if recording was already active on page load
 fetch(API+'/api/record/status').then(r=>r.json()).then(s=>{
   if(s.active){recStartTime=Date.now()-s.elapsed*1000;document.getElementById('recName').value=s.name;

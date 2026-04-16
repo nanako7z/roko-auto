@@ -77,7 +77,14 @@ class TaskRunner:
 
     def trigger_once(self) -> None:
         """Trigger a single immediate execution in a new thread."""
-        t = threading.Thread(target=self._execute_cycle, daemon=True,
+        def _safe_execute():
+            try:
+                self._execute_cycle()
+            except Exception as e:
+                self.status.last_error = str(e)
+                print(f"[{self.name}] Trigger error: {e}")
+
+        t = threading.Thread(target=_safe_execute, daemon=True,
                              name=f"task-{self.name}-trigger")
         t.start()
 
@@ -149,8 +156,13 @@ class TaskRunner:
         wait_time = 0.0
         if lock:
             t0 = time.time()
-            lock.acquire()
+            acquired = lock.acquire(timeout=300)
             wait_time = time.time() - t0
+            if not acquired:
+                msg = f"Exec lock timeout after {wait_time:.0f}s — skipping cycle"
+                self.status.last_error = msg
+                print(f"[{self.name}] {msg}")
+                return wait_time
             if wait_time > 0.01:
                 print(f"[{self.name}] Waited {wait_time:.2f}s for exec lock")
         try:

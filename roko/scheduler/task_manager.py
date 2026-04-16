@@ -59,14 +59,13 @@ class TaskManager:
                 runner.stop()
             del self._tasks[name]
 
-        # If name changed, delete old file
-        if name != config.name:
-            self._delete_task_file(name)
+            # If name changed, delete old file
+            if name != config.name:
+                self._delete_task_file(name)
 
-        # Re-create with new config
-        new_runner = TaskRunner(config, self.kbd, self.mouse, self.config_dir, self.commands_dir,
-                                exec_lock=self._exec_lock)
-        with self._lock:
+            # Re-create with new config
+            new_runner = TaskRunner(config, self.kbd, self.mouse, self.config_dir,
+                                    self.commands_dir, exec_lock=self._exec_lock)
             self._tasks[config.name] = new_runner
             self._save_task_file(config)
             if was_running:
