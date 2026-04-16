@@ -28,10 +28,16 @@ class TemplateMatcher:
     Supports transparent PNG templates — alpha channel is used as a mask
     so only opaque pixels participate in matching.
 
-    Uses a 3-phase matching strategy:
-      Phase 0: Direct match at scale 1.0 (fast path)
-      Phase 1: Coarse multi-scale at half resolution (7 scales)
-      Phase 2: Fine refinement (3 scales, full resolution, tight ROI)
+    For masked templates, transparent pixels are filled with the mean colour
+    of the opaque region and matching uses TM_CCOEFF_NORMED *without* the
+    mask parameter.  Because CCOEFF subtracts the local mean, the filled
+    pixels contribute near-zero to the correlation — effectively only opaque
+    pixels drive the score.  This avoids TM_CCORR_NORMED's poor
+    discrimination and TM_CCOEFF_NORMED's lack of mask support.
+
+    After locating the best position, a verification pass computes the
+    zero-mean normalised cross-correlation on masked pixels only, producing
+    an accurate confidence score.
     """
 
     def __init__(self, template_path: Path, threshold: float = 0.8) -> None:
@@ -49,13 +55,18 @@ class TemplateMatcher:
             alpha = img[:, :, 3]
             self._template_bgr = img[:, :, :3]
             self._mask = (alpha > 0).astype(np.uint8) * 255
-            self._mask3 = cv2.merge([self._mask, self._mask, self._mask])
             self._has_mask = True
+
+            # Fill transparent pixels with mean of opaque region
+            mask_bool = self._mask > 0
+            mean_color = self._template_bgr[mask_bool].mean(axis=0).astype(np.uint8)
+            self._template_match = self._template_bgr.copy()
+            self._template_match[~mask_bool] = mean_color
         else:
             self._template_bgr = img if img.ndim == 3 else cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
             self._mask = None
-            self._mask3 = None
             self._has_mask = False
+            self._template_match = self._template_bgr
 
         self._h, self._w = self._template_bgr.shape[:2]
 
@@ -63,46 +74,70 @@ class TemplateMatcher:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _resize_template_with_mask3(
+    def _resize_template(
         self, scale: float
-    ) -> tuple[np.ndarray, Optional[np.ndarray], int, int]:
-        """Return (template_bgr, mask3_or_None, tw, th) at *scale*."""
+    ) -> tuple[np.ndarray, int, int]:
+        """Return (template_for_matching, tw, th) at *scale*."""
         if scale == 1.0:
-            return self._template_bgr, self._mask3, self._w, self._h
+            return self._template_match, self._w, self._h
 
         new_w = max(1, int(self._w * scale))
         new_h = max(1, int(self._h * scale))
         interp = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_LINEAR
-        tmpl = cv2.resize(self._template_bgr, (new_w, new_h), interpolation=interp)
+        tmpl = cv2.resize(self._template_match, (new_w, new_h), interpolation=interp)
+        return tmpl, new_w, new_h
 
-        if self._has_mask:
-            m = cv2.resize(self._mask, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
-            mask3 = cv2.merge([m, m, m])
-        else:
-            mask3 = None
-
-        return tmpl, mask3, new_w, new_h
-
+    @staticmethod
     def _cv_match(
-        self,
         screen: np.ndarray,
         tmpl: np.ndarray,
-        mask3: Optional[np.ndarray],
     ) -> tuple[float, tuple[int, int]]:
-        """Run matchTemplate. Returns (confidence, (x, y)).
-
-        Uses TM_CCORR_NORMED for masked templates (only normalized method
-        that supports mask in OpenCV), TM_CCOEFF_NORMED for non-masked.
-        """
-        if mask3 is not None:
-            result = cv2.matchTemplate(screen, tmpl, cv2.TM_CCORR_NORMED, mask=mask3)
-        else:
-            result = cv2.matchTemplate(screen, tmpl, cv2.TM_CCOEFF_NORMED)
+        """Run TM_CCOEFF_NORMED (no mask). Returns (confidence, (x, y))."""
+        result = cv2.matchTemplate(screen, tmpl, cv2.TM_CCOEFF_NORMED)
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
         conf = float(max_val)
         if conf != conf:  # NaN guard
             conf = 0.0
         return conf, max_loc
+
+    def _verify_masked(
+        self,
+        screen: np.ndarray,
+        loc: tuple[int, int],
+        tw: int,
+        th: int,
+        scale: float,
+    ) -> float:
+        """Compute precise ZNCC on masked pixels only.
+
+        Extracts the screen patch at *loc* and compares only the opaque
+        pixels of the template, giving a confidence value that is immune
+        to the mean-fill approximation used during the search phase.
+        """
+        x, y = loc
+        patch = screen[y:y + th, x:x + tw]
+        if patch.shape[0] != th or patch.shape[1] != tw:
+            return 0.0
+
+        if scale == 1.0:
+            tmpl_bgr = self._template_bgr
+            mask = self._mask
+        else:
+            interp = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_LINEAR
+            tmpl_bgr = cv2.resize(self._template_bgr, (tw, th), interpolation=interp)
+            mask = cv2.resize(self._mask, (tw, th), interpolation=cv2.INTER_NEAREST)
+
+        mask_bool = mask > 0
+        t = tmpl_bgr[mask_bool].astype(np.float64).ravel()
+        s = patch[mask_bool].astype(np.float64).ravel()
+
+        t -= t.mean()
+        s -= s.mean()
+
+        denom = np.sqrt(np.dot(t, t) * np.dot(s, s))
+        if denom < 1e-6:
+            return 0.0
+        return float(np.dot(t, s) / denom)
 
     def _scale_range(self, screen_w: int, screen_h: int) -> tuple[float, float]:
         """Compute valid (min_scale, max_scale) for the template vs screen."""
@@ -123,7 +158,12 @@ class TemplateMatcher:
         if self._w > sw or self._h > sh:
             return None
 
-        conf, loc = self._cv_match(screen_bgr, self._template_bgr, self._mask3)
+        conf, loc = self._cv_match(screen_bgr, self._template_match)
+
+        # For masked templates, verify with precise masked ZNCC
+        if self._has_mask and conf >= self.threshold:
+            conf = self._verify_masked(screen_bgr, loc, self._w, self._h, 1.0)
+
         if conf >= self.threshold:
             x, y = loc
             return MatchResult(
@@ -164,11 +204,11 @@ class TemplateMatcher:
 
         for s in scales:
             eff_scale = s / ds
-            tmpl, mask3, tw, th = self._resize_template_with_mask3(eff_scale)
+            tmpl, tw, th = self._resize_template(eff_scale)
             if tw < 4 or th < 4 or tw > scr_w or th > scr_h:
                 continue
 
-            conf, loc = self._cv_match(screen, tmpl, mask3)
+            conf, loc = self._cv_match(screen, tmpl)
             if conf > best_conf:
                 best_conf = conf
                 best_scale = float(s)
@@ -237,17 +277,25 @@ class TemplateMatcher:
             scale_hi = min(max_scale, best_scale + step)
             prev_ds = ds
 
-        if best_conf >= self.threshold:
-            # Re-derive template size at best scale for accurate dimensions
-            final_tw = max(1, int(self._w * best_scale))
-            final_th = max(1, int(self._h * best_scale))
-            x, y = best_loc
-            return MatchResult(
-                x=x, y=y, width=final_tw, height=final_th,
-                center_x=x + final_tw // 2, center_y=y + final_th // 2,
-                confidence=best_conf,
-            )
-        return None
+        if best_conf < self.threshold:
+            return None
+
+        final_tw = max(1, int(self._w * best_scale))
+        final_th = max(1, int(self._h * best_scale))
+        x, y = best_loc
+
+        # For masked templates, verify the final match with precise ZNCC
+        conf = best_conf
+        if self._has_mask:
+            conf = self._verify_masked(screen_bgr, (x, y), final_tw, final_th, best_scale)
+            if conf < self.threshold:
+                return None
+
+        return MatchResult(
+            x=x, y=y, width=final_tw, height=final_th,
+            center_x=x + final_tw // 2, center_y=y + final_th // 2,
+            confidence=conf,
+        )
 
     # ------------------------------------------------------------------
     # Multi-scale matching (orchestrator)
