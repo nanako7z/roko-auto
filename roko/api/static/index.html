@@ -23,7 +23,7 @@
   --radius: 8px;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background:var(--bg); color:var(--text); line-height:1.5; min-height:100vh; }
+body { font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif; background:var(--bg); color:var(--text); line-height:1.5; min-height:100vh; }
 button { cursor:pointer; font-family:inherit; }
 input,textarea,select { font-family:inherit; }
 
@@ -89,7 +89,7 @@ input,textarea,select { font-family:inherit; }
 .task-actions { display:flex; gap:6px; flex-shrink:0; }
 
 /* Badge */
-.badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; text-transform:uppercase; }
+.badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
 .badge-running { background:rgba(166,227,161,.15); color:var(--green); }
 .badge-idle { background:rgba(166,172,200,.1); color:var(--text2); }
 .badge-paused { background:rgba(249,226,175,.15); color:var(--yellow); }
@@ -183,21 +183,21 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
   <div class="sidebar">
     <div class="sidebar-header">
       <h1>roko-auto</h1>
-      <div class="subtitle">automation platform</div>
+      <div class="subtitle">自动化调度平台</div>
     </div>
     <nav class="sidebar-nav">
       <button class="nav-item active" onclick="showSection('tasks')">
-        <span class="icon">&#9776;</span><span>Tasks</span>
+        <span class="icon">&#9776;</span><span>任务管理</span>
       </button>
       <button class="nav-item" onclick="showSection('monitor')">
-        <span class="icon">&#9673;</span><span>Monitor</span>
+        <span class="icon">&#9673;</span><span>屏幕监控</span>
       </button>
       <button class="nav-item" onclick="showSection('system')">
-        <span class="icon">&#9881;</span><span>System</span>
+        <span class="icon">&#9881;</span><span>系统状态</span>
       </button>
     </nav>
     <div class="sidebar-status" id="sidebarStatus">
-      <span class="dot dot-green"></span>Connecting...
+      <span class="dot dot-green"></span>连接中...
     </div>
   </div>
 
@@ -207,10 +207,10 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
     <!-- ===== Tasks Section ===== -->
     <div class="section active" id="section-tasks">
       <div class="topbar">
-        <h2>Tasks</h2>
+        <h2>任务管理</h2>
         <div class="topbar-actions">
-          <button class="btn btn-sm" onclick="refreshTasks()">Refresh</button>
-          <button class="btn btn-sm btn-primary" onclick="openTaskModal()">+ New Task</button>
+          <button class="btn btn-sm" onclick="refreshTasks()">刷新</button>
+          <button class="btn btn-sm btn-primary" onclick="openTaskModal()">+ 新建任务</button>
         </div>
       </div>
       <div class="content">
@@ -221,28 +221,28 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
     <!-- ===== Monitor Section ===== -->
     <div class="section" id="section-monitor">
       <div class="topbar">
-        <h2>Screen Monitor</h2>
+        <h2>屏幕监控</h2>
         <div class="topbar-actions">
-          <button class="btn btn-sm" id="monitorToggle" onclick="toggleMonitor()">Start</button>
+          <button class="btn btn-sm" id="monitorToggle" onclick="toggleMonitor()">开始</button>
         </div>
       </div>
       <div class="content">
         <div class="monitor-container">
           <div class="monitor-frame">
-            <img id="monitorImg" src="" alt="Screen capture will appear here"
+            <img id="monitorImg" src="" alt="屏幕截图将显示在此处"
                  style="min-width:640px;min-height:360px;background:var(--bg);">
           </div>
           <div class="monitor-controls">
             <label style="font-size:13px;color:var(--text2);">
-              Interval:
+              刷新间隔：
               <select id="monitorInterval" style="width:auto;padding:4px 8px;font-size:12px;">
-                <option value="1000">1s</option>
-                <option value="2000" selected>2s</option>
-                <option value="5000">5s</option>
-                <option value="10000">10s</option>
+                <option value="1000">1 秒</option>
+                <option value="2000" selected>2 秒</option>
+                <option value="5000">5 秒</option>
+                <option value="10000">10 秒</option>
               </select>
             </label>
-            <span class="monitor-status" id="monitorStatus">Stopped</span>
+            <span class="monitor-status" id="monitorStatus">已停止</span>
           </div>
         </div>
       </div>
@@ -251,9 +251,9 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
     <!-- ===== System Section ===== -->
     <div class="section" id="section-system">
       <div class="topbar">
-        <h2>System</h2>
+        <h2>系统状态</h2>
         <div class="topbar-actions">
-          <button class="btn btn-sm" onclick="refreshSystem()">Refresh</button>
+          <button class="btn btn-sm" onclick="refreshSystem()">刷新</button>
         </div>
       </div>
       <div class="content">
@@ -268,100 +268,100 @@ textarea { resize:vertical; min-height:120px; font-family:'Cascadia Code','Fira 
 <div class="modal-overlay" id="taskModal" style="display:none;" onclick="if(event.target===this)closeTaskModal()">
   <div class="modal">
     <div class="modal-header">
-      <h3 id="taskModalTitle">New Task</h3>
+      <h3 id="taskModalTitle">新建任务</h3>
       <button class="close-btn" onclick="closeTaskModal()">&times;</button>
     </div>
     <div class="modal-body">
       <div class="tabs">
-        <button class="tab active" onclick="switchTab(this,'tabForm')">Form</button>
-        <button class="tab" onclick="switchTab(this,'tabYaml')">YAML</button>
+        <button class="tab active" onclick="switchTab(this,'tabForm')">表单模式</button>
+        <button class="tab" onclick="switchTab(this,'tabYaml')">YAML 模式</button>
       </div>
 
       <!-- Form tab -->
       <div id="tabForm">
         <div class="form-row">
           <div class="form-group">
-            <label>Task Name</label>
-            <input type="text" id="fName" placeholder="e.g. keep_alive">
+            <label>任务名称</label>
+            <input type="text" id="fName" placeholder="例如 keep_alive">
           </div>
           <div class="form-group">
-            <label>Enabled</label>
+            <label>是否启用</label>
             <select id="fEnabled">
-              <option value="true">Yes</option>
-              <option value="false">No</option>
+              <option value="true">是</option>
+              <option value="false">否</option>
             </select>
           </div>
         </div>
 
-        <h4 style="font-size:13px;color:var(--accent);margin:20px 0 12px;">Schedule</h4>
+        <h4 style="font-size:13px;color:var(--accent);margin:20px 0 12px;">调度设置</h4>
         <div class="form-row-3">
           <div class="form-group">
-            <label>Type</label>
+            <label>调度类型</label>
             <select id="fSchedType" onchange="onSchedTypeChange()">
-              <option value="interval">interval</option>
-              <option value="cron">cron</option>
-              <option value="oneshot">oneshot</option>
+              <option value="interval">固定周期</option>
+              <option value="cron">Cron 表达式</option>
+              <option value="oneshot">单次执行</option>
             </select>
           </div>
           <div class="form-group" id="fIntervalGroup">
-            <label>Interval (sec)</label>
+            <label>执行周期（秒）</label>
             <input type="number" id="fInterval" value="20" min="1" step="1">
           </div>
           <div class="form-group" id="fCronGroup" style="display:none;">
-            <label>Cron Expression</label>
+            <label>Cron 表达式</label>
             <input type="text" id="fCron" placeholder="*/5 * * * *">
           </div>
           <div class="form-group">
-            <label>Jitter (sec)</label>
+            <label>随机抖动（秒）</label>
             <input type="number" id="fJitter" value="0" min="0" step="0.5">
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Start Delay (sec)</label>
+            <label>启动延迟（秒）</label>
             <input type="number" id="fDelay" value="0" min="0" step="1">
           </div>
           <div class="form-group">
-            <label>Pause Between Cycles (sec)</label>
+            <label>周期间额外暂停（秒）</label>
             <input type="number" id="fPause" value="0" min="0" step="0.5">
           </div>
         </div>
 
-        <h4 style="font-size:13px;color:var(--accent);margin:20px 0 12px;">Options</h4>
+        <h4 style="font-size:13px;color:var(--accent);margin:20px 0 12px;">执行选项</h4>
         <div class="form-row-3">
           <div class="form-group">
-            <label>Hold (sec)</label>
+            <label>按键保持时长（秒）</label>
             <input type="number" id="fHold" value="0.03" min="0" step="0.01">
           </div>
           <div class="form-group">
-            <label>Move Duration (sec)</label>
+            <label>鼠标移动耗时（秒）</label>
             <input type="number" id="fMoveDur" value="0" min="0" step="0.1">
           </div>
           <div class="form-group">
-            <label>Move Wobble</label>
+            <label>鼠标移动曲率</label>
             <input type="number" id="fWobble" value="0.2" min="0" step="0.05">
           </div>
         </div>
 
-        <h4 style="font-size:13px;color:var(--accent);margin:20px 0 12px;">Commands</h4>
+        <h4 style="font-size:13px;color:var(--accent);margin:20px 0 12px;">命令配置</h4>
         <div class="form-group">
-          <label>Command File (optional, overrides inline commands)</label>
+          <label>命令文件（可选，填写后优先使用文件中的命令）</label>
           <input type="text" id="fCmdFile" placeholder="commands/my_sequence.yaml">
         </div>
         <div class="form-group">
-          <label>Commands (YAML list)</label>
+          <label>命令列表（YAML 格式）</label>
           <textarea id="fCommands" rows="8" placeholder="- type: key
   key: tab
 - type: wait
   sec: 2"></textarea>
-          <div class="form-hint">YAML format. Each item must have a <code>type</code> field. Supported: key, hotkey, wait, mouse_click, mouse_move, mouse_scroll, file</div>
+          <div class="form-hint">YAML 格式，每项必须包含 <code>type</code> 字段。支持类型：key、hotkey、wait、mouse_click、mouse_move、mouse_scroll、file</div>
         </div>
       </div>
 
       <!-- YAML tab -->
       <div id="tabYaml" style="display:none;">
         <div class="form-group">
-          <label>Full Task YAML</label>
+          <label>完整任务配置（YAML）</label>
           <textarea id="fYamlFull" rows="20" placeholder="name: my_task
 enabled: true
 schedule:
@@ -370,13 +370,13 @@ schedule:
 commands:
   - type: key
     key: tab"></textarea>
-          <div class="form-hint">Paste or edit the complete task configuration in YAML format</div>
+          <div class="form-hint">在此粘贴或直接编辑完整的任务配置 YAML</div>
         </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeTaskModal()">Cancel</button>
-      <button class="btn btn-primary" id="taskModalSave" onclick="saveTask()">Create</button>
+      <button class="btn" onclick="closeTaskModal()">取消</button>
+      <button class="btn btn-primary" id="taskModalSave" onclick="saveTask()">创建</button>
     </div>
   </div>
 </div>
@@ -386,6 +386,15 @@ commands:
 
 <script>
 const API = '';  // same origin
+
+// ── 状态标签映射 ──
+const STATE_LABELS = {
+  running: '运行中',
+  idle: '空闲',
+  paused: '已暂停',
+  error: '异常',
+  completed: '已完成',
+};
 
 // ── State ──
 let currentSection = 'tasks';
@@ -446,8 +455,8 @@ function renderTasks() {
   if (!tasks.length) {
     el.innerHTML = `<div class="empty-state">
       <div class="icon">&#9776;</div>
-      <p>No tasks yet</p>
-      <button class="btn btn-primary" onclick="openTaskModal()">+ Create your first task</button>
+      <p>暂无任务</p>
+      <button class="btn btn-primary" onclick="openTaskModal()">+ 创建第一个任务</button>
     </div>`;
     return;
   }
@@ -455,53 +464,59 @@ function renderTasks() {
     const s = t.status;
     const c = t.config;
     const state = s.state || 'idle';
-    const schedDesc = c.schedule.type === 'cron'
+    const stateLabel = STATE_LABELS[state] || state;
+    const schedType = c.schedule.type;
+    const schedDesc = schedType === 'cron'
       ? c.schedule.cron_expression
-      : c.schedule.type === 'interval'
-        ? c.schedule.interval_sec + 's' + (c.schedule.jitter_sec ? ' \u00b1' + c.schedule.jitter_sec + 's' : '')
-        : 'oneshot';
+      : schedType === 'interval'
+        ? c.schedule.interval_sec + '秒' + (c.schedule.jitter_sec ? ' \u00b1' + c.schedule.jitter_sec + '秒' : '')
+        : '单次执行';
     const lastRun = s.last_run ? new Date(s.last_run).toLocaleTimeString() : '-';
     return `<div class="task-card">
       <div class="task-status-dot ${state}"></div>
       <div class="task-info">
-        <div class="task-name">${esc(c.name)} <span class="badge badge-${state}">${state}</span></div>
+        <div class="task-name">${esc(c.name)} <span class="badge badge-${state}">${stateLabel}</span></div>
         <div class="task-meta">
-          <span>Schedule: ${esc(schedDesc)}</span>
-          <span>Cycles: ${s.cycle_count}</span>
-          <span>Last: ${lastRun}</span>
-          ${s.last_error ? '<span style="color:var(--red)">Error: ' + esc(s.last_error.substring(0,60)) + '</span>' : ''}
+          <span>调度：${esc(schedDesc)}</span>
+          <span>已执行：${s.cycle_count} 次</span>
+          <span>上次：${lastRun}</span>
+          ${s.last_error ? '<span style="color:var(--red)">错误：' + esc(s.last_error.substring(0,60)) + '</span>' : ''}
         </div>
       </div>
       <div class="task-actions">
         ${state === 'running'
-          ? `<button class="btn btn-sm btn-warning" onclick="taskAction('${esc(c.name)}','pause')">Pause</button>
-             <button class="btn btn-sm btn-danger" onclick="taskAction('${esc(c.name)}','stop')">Stop</button>`
+          ? `<button class="btn btn-sm btn-warning" onclick="taskAction('${esc(c.name)}','pause')">暂停</button>
+             <button class="btn btn-sm btn-danger" onclick="taskAction('${esc(c.name)}','stop')">停止</button>`
           : state === 'paused'
-          ? `<button class="btn btn-sm btn-success" onclick="taskAction('${esc(c.name)}','resume')">Resume</button>
-             <button class="btn btn-sm btn-danger" onclick="taskAction('${esc(c.name)}','stop')">Stop</button>`
-          : `<button class="btn btn-sm btn-success" onclick="taskAction('${esc(c.name)}','start')">Start</button>`
+          ? `<button class="btn btn-sm btn-success" onclick="taskAction('${esc(c.name)}','resume')">恢复</button>
+             <button class="btn btn-sm btn-danger" onclick="taskAction('${esc(c.name)}','stop')">停止</button>`
+          : `<button class="btn btn-sm btn-success" onclick="taskAction('${esc(c.name)}','start')">启动</button>`
         }
-        <button class="btn btn-sm" onclick="taskAction('${esc(c.name)}','trigger')">Trigger</button>
-        <button class="btn btn-sm" onclick="editTask('${esc(c.name)}')">Edit</button>
-        <button class="btn btn-sm btn-danger btn-icon" onclick="deleteTask('${esc(c.name)}')" title="Delete">&times;</button>
+        <button class="btn btn-sm" onclick="taskAction('${esc(c.name)}','trigger')">触发</button>
+        <button class="btn btn-sm" onclick="editTask('${esc(c.name)}')">编辑</button>
+        <button class="btn btn-sm btn-danger btn-icon" onclick="deleteTask('${esc(c.name)}')" title="删除">&times;</button>
       </div>
     </div>`;
   }).join('');
 }
 
+const ACTION_LABELS = {
+  start: '已启动', stop: '已停止', pause: '已暂停', resume: '已恢复', trigger: '已触发'
+};
+
 async function taskAction(name, action) {
   try {
     await api(`/api/tasks/${encodeURIComponent(name)}/${action}`, {method:'POST'});
-    toast(`Task '${name}' — ${action}`, 'success');
+    toast(`任务 "${name}" ${ACTION_LABELS[action] || action}`, 'success');
     refreshTasks();
   } catch(e) {}
 }
 
 async function deleteTask(name) {
-  if (!confirm(`Delete task "${name}"?`)) return;
+  if (!confirm(`确认删除任务 "${name}"？`)) return;
   try {
     await api(`/api/tasks/${encodeURIComponent(name)}`, {method:'DELETE'});
-    toast(`Task '${name}' deleted`, 'success');
+    toast(`任务 "${name}" 已删除`, 'success');
     refreshTasks();
   } catch(e) {}
 }
@@ -509,8 +524,8 @@ async function deleteTask(name) {
 // ── Task Modal ──
 function openTaskModal(task=null) {
   editingTask = task;
-  document.getElementById('taskModalTitle').textContent = task ? 'Edit Task' : 'New Task';
-  document.getElementById('taskModalSave').textContent = task ? 'Save' : 'Create';
+  document.getElementById('taskModalTitle').textContent = task ? '编辑任务' : '新建任务';
+  document.getElementById('taskModalSave').textContent = task ? '保存' : '创建';
 
   if (task) {
     const c = task.config;
@@ -548,7 +563,6 @@ function openTaskModal(task=null) {
     document.getElementById('fYamlFull').value = '';
   }
   onSchedTypeChange();
-  // Reset to form tab
   switchTab(document.querySelector('.tab'), 'tabForm');
   document.getElementById('taskModal').style.display = 'flex';
 }
@@ -563,7 +577,6 @@ function switchTab(btn, tabId) {
   btn.classList.add('active');
   document.getElementById('tabForm').style.display = tabId === 'tabForm' ? 'block' : 'none';
   document.getElementById('tabYaml').style.display = tabId === 'tabYaml' ? 'block' : 'none';
-  // Sync form -> yaml when switching to yaml tab
   if (tabId === 'tabYaml' && !editingTask) {
     document.getElementById('fYamlFull').value = buildYamlFromForm();
   }
@@ -576,7 +589,6 @@ function onSchedTypeChange() {
 }
 
 async function saveTask() {
-  // Determine source: if YAML tab is visible and has content, use it
   const yamlTabVisible = document.getElementById('tabYaml').style.display !== 'none';
   let payload;
 
@@ -584,7 +596,7 @@ async function saveTask() {
     try {
       payload = parseSimpleYaml(document.getElementById('fYamlFull').value);
     } catch(e) {
-      toast('Invalid YAML: ' + e.message, 'error');
+      toast('YAML 格式错误：' + e.message, 'error');
       return;
     }
   } else {
@@ -598,13 +610,13 @@ async function saveTask() {
         method: 'PUT',
         body: JSON.stringify(payload)
       });
-      toast('Task updated', 'success');
+      toast('任务已更新', 'success');
     } else {
       await api('/api/tasks', {
         method: 'POST',
         body: JSON.stringify(payload)
       });
-      toast('Task created', 'success');
+      toast('任务已创建', 'success');
     }
     closeTaskModal();
     refreshTasks();
@@ -613,7 +625,7 @@ async function saveTask() {
 
 function buildPayloadFromForm() {
   const name = document.getElementById('fName').value.trim();
-  if (!name) { toast('Name is required', 'error'); return null; }
+  if (!name) { toast('请输入任务名称', 'error'); return null; }
 
   const schedType = document.getElementById('fSchedType').value;
   const schedule = {
@@ -642,7 +654,7 @@ function buildPayloadFromForm() {
     try {
       commands = parseSimpleYamlList(cmdText);
     } catch(e) {
-      toast('Invalid commands YAML: ' + e.message, 'error');
+      toast('命令列表 YAML 格式错误：' + e.message, 'error');
       return null;
     }
   }
@@ -658,9 +670,7 @@ function buildPayloadFromForm() {
 }
 
 // ── Minimal YAML parser (for commands) ──
-// Uses the backend to parse YAML via a helper endpoint, or falls back to simple JS parsing
 function parseSimpleYamlList(text) {
-  // Simple YAML list parser for commands
   const items = [];
   let current = null;
   for (const line of text.split('\n')) {
@@ -694,11 +704,9 @@ function parseYamlValue(v) {
   if (v === 'null' || v === '') return null;
   if (/^-?\d+$/.test(v)) return parseInt(v);
   if (/^-?\d+\.\d+$/.test(v)) return parseFloat(v);
-  // Array: [a, b, c]
   if (v.startsWith('[') && v.endsWith(']')) {
     return v.slice(1,-1).split(',').map(s => parseYamlValue(s.trim()));
   }
-  // Strip quotes
   if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
     return v.slice(1,-1);
   }
@@ -706,7 +714,6 @@ function parseYamlValue(v) {
 }
 
 function parseSimpleYaml(text) {
-  // Parse a flat/nested YAML into object — good enough for task configs
   const result = {};
   let currentKey = null;
   let currentObj = result;
@@ -717,14 +724,12 @@ function parseSimpleYaml(text) {
     const indent = line.search(/\S/);
     const content = line.trim();
 
-    // Pop stack for dedent
     while (stack.length > 1 && indent <= stack[stack.length-1].indent) {
       stack.pop();
     }
     currentObj = stack[stack.length-1].obj;
 
     if (content.startsWith('- ')) {
-      // List item — find the parent key
       const parentKey = Object.keys(currentObj).pop();
       if (parentKey && !Array.isArray(currentObj[parentKey])) {
         currentObj[parentKey] = [];
@@ -747,7 +752,6 @@ function parseSimpleYaml(text) {
       const key = content.substring(0, idx).trim();
       const val = content.substring(idx+1).trim();
       if (val === '' || val === '|') {
-        // Nested object or empty
         currentObj[key] = {};
         stack.push({obj: currentObj[key], indent: indent});
       } else {
@@ -816,34 +820,32 @@ function toggleMonitor() {
 
 function startMonitor() {
   monitorRunning = true;
-  document.getElementById('monitorToggle').textContent = 'Stop';
+  document.getElementById('monitorToggle').textContent = '停止';
   document.getElementById('monitorToggle').classList.add('btn-danger');
-  document.getElementById('monitorToggle').classList.remove('btn-sm');
-  document.getElementById('monitorToggle').classList.add('btn-sm');
   captureScreen();
   const interval = parseInt(document.getElementById('monitorInterval').value);
   monitorTimer = setInterval(captureScreen, interval);
-  document.getElementById('monitorStatus').textContent = 'Running';
+  document.getElementById('monitorStatus').textContent = '监控中';
 }
 
 function stopMonitor() {
   monitorRunning = false;
   if (monitorTimer) { clearInterval(monitorTimer); monitorTimer = null; }
-  document.getElementById('monitorToggle').textContent = 'Start';
+  document.getElementById('monitorToggle').textContent = '开始';
   document.getElementById('monitorToggle').classList.remove('btn-danger');
-  document.getElementById('monitorStatus').textContent = 'Stopped';
+  document.getElementById('monitorStatus').textContent = '已停止';
 }
 
 async function captureScreen() {
   try {
     const res = await fetch(API + '/api/screen?format=base64');
-    if (!res.ok) throw new Error('Capture failed');
+    if (!res.ok) throw new Error('截图失败');
     const data = await res.json();
     document.getElementById('monitorImg').src = 'data:image/png;base64,' + data.image;
     document.getElementById('monitorStatus').textContent =
-      'Last: ' + new Date().toLocaleTimeString();
+      '最近更新：' + new Date().toLocaleTimeString();
   } catch(e) {
-    document.getElementById('monitorStatus').textContent = 'Error: ' + e.message;
+    document.getElementById('monitorStatus').textContent = '错误：' + e.message;
   }
 }
 
@@ -854,41 +856,40 @@ async function refreshSystem() {
     const uptime = formatDuration(data.uptime_seconds);
     document.getElementById('systemStats').innerHTML = `
       <div class="stat-card">
-        <div class="stat-label">Driver</div>
+        <div class="stat-label">驱动类型</div>
         <div class="stat-value ${data.driver_type==='interception'?'green':'orange'}">${data.driver_type}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Total Tasks</div>
+        <div class="stat-label">任务总数</div>
         <div class="stat-value accent">${data.total_tasks}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Running Tasks</div>
+        <div class="stat-label">运行中</div>
         <div class="stat-value green">${data.running_tasks}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Uptime</div>
+        <div class="stat-label">运行时间</div>
         <div class="stat-value">${uptime}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Started At</div>
+        <div class="stat-label">启动时间</div>
         <div class="stat-value" style="font-size:18px">${new Date(data.started_at).toLocaleString()}</div>
       </div>
     `;
-    // Update sidebar
     document.getElementById('sidebarStatus').innerHTML =
-      `<span class="dot dot-green"></span>${data.running_tasks} running / ${data.total_tasks} total`;
+      `<span class="dot dot-green"></span>${data.running_tasks} 运行中 / 共 ${data.total_tasks} 个`;
   } catch(e) {
     document.getElementById('sidebarStatus').innerHTML =
-      '<span class="dot dot-red"></span>Connection error';
+      '<span class="dot dot-red"></span>连接失败';
   }
 }
 
 function formatDuration(sec) {
-  if (sec < 60) return Math.round(sec) + 's';
-  if (sec < 3600) return Math.floor(sec/60) + 'm ' + Math.round(sec%60) + 's';
+  if (sec < 60) return Math.round(sec) + ' 秒';
+  if (sec < 3600) return Math.floor(sec/60) + ' 分 ' + Math.round(sec%60) + ' 秒';
   const h = Math.floor(sec/3600);
   const m = Math.floor((sec%3600)/60);
-  return h + 'h ' + m + 'm';
+  return h + ' 小时 ' + m + ' 分';
 }
 
 // ── Utils ──
@@ -902,7 +903,6 @@ function esc(s) {
 // ── Init ──
 refreshTasks();
 refreshSystem();
-// Auto-refresh every 5s
 setInterval(() => {
   if (currentSection === 'tasks') refreshTasks();
   refreshSystem();
