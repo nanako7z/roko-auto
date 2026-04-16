@@ -183,6 +183,13 @@ class TaskRunner:
         scan_delay = sentinel_cfg.scan_interval_ms / 1000.0
         region = tuple(sentinel_cfg.scan_region) if sentinel_cfg.scan_region else None
 
+        # Track last triggered position to avoid re-triggering at the same spot.
+        # Once a match triggers, subsequent matches at the same location are ignored
+        # until the pattern disappears (no match) and reappears.
+        triggered_pos = None  # (center_x, center_y) or None
+        # Tolerance: match within half-template-size counts as "same position"
+        pos_tolerance = max(matcher._w, matcher._h) // 2
+
         print(f"[{self.name}] Sentinel active: template={template_path.name}, "
               f"threshold={sentinel_cfg.match_threshold}, interval={sentinel_cfg.scan_interval_ms}ms")
 
@@ -202,11 +209,28 @@ class TaskRunner:
                 continue
 
             if result:
-                print(f"[{self.name}] Match found! confidence={result.confidence:.3f} "
-                      f"center=({result.center_x},{result.center_y})")
-                self._last_match = result
-                self._execute_cycle()
-                self._last_match = None
+                # Check if this is the same position as last trigger
+                same_pos = False
+                if triggered_pos is not None:
+                    dx = abs(result.center_x - triggered_pos[0])
+                    dy = abs(result.center_y - triggered_pos[1])
+                    same_pos = dx <= pos_tolerance and dy <= pos_tolerance
+
+                if same_pos:
+                    # Still at same position — skip
+                    pass
+                else:
+                    print(f"[{self.name}] Match found! confidence={result.confidence:.3f} "
+                          f"center=({result.center_x},{result.center_y})")
+                    triggered_pos = (result.center_x, result.center_y)
+                    self._last_match = result
+                    self._execute_cycle()
+                    self._last_match = None
+            else:
+                # Pattern disappeared — reset so it can trigger again
+                if triggered_pos is not None:
+                    print(f"[{self.name}] Pattern disappeared, ready to re-trigger")
+                    triggered_pos = None
 
             if self._stop_event.wait(scan_delay):
                 break
