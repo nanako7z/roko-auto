@@ -51,6 +51,11 @@ class SharedInterceptionContext:
         self.lib.interception_is_mouse.argtypes = [ctypes.c_int]
         self.lib.interception_is_mouse.restype = ctypes.c_int
 
+        self.lib.interception_get_hardware_id.argtypes = [
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint,
+        ]
+        self.lib.interception_get_hardware_id.restype = ctypes.c_uint
+
         self.context = self.lib.interception_create_context()
         if not self.context:
             raise RuntimeError("Failed to create Interception context")
@@ -76,17 +81,35 @@ class SharedInterceptionContext:
                 cls._instance.close()
                 cls._instance = None
 
+    def _has_hardware(self, device: int) -> bool:
+        """Return True if a real hardware device is bound to this Interception slot."""
+        buf = ctypes.create_string_buffer(512)
+        n = self.lib.interception_get_hardware_id(
+            self.context, device, ctypes.byref(buf), ctypes.sizeof(buf))
+        return n > 0
+
     def _pick_device(self, is_keyboard: bool) -> int:
         if is_keyboard:
-            for device in range(1, 21):
-                if self.lib.interception_is_keyboard(device):
-                    return device
-            raise RuntimeError("No keyboard device found by Interception")
+            slots = range(1, 11)
+            check = self.lib.interception_is_keyboard
+            label = "keyboard"
         else:
-            for device in range(11, 21):
-                if self.lib.interception_is_mouse(device):
-                    return device
-            raise RuntimeError("No mouse device found by Interception")
+            slots = range(11, 21)
+            check = self.lib.interception_is_mouse
+            label = "mouse"
+
+        # Prefer a slot that has actual connected hardware — sending to an
+        # empty slot causes interception_send to return 0.
+        for device in slots:
+            if check(device) and self._has_hardware(device):
+                return device
+
+        # Fallback: any slot of the right type (legacy behavior).
+        for device in slots:
+            if check(device):
+                return device
+
+        raise RuntimeError(f"No {label} device found by Interception")
 
     def close(self) -> None:
         if self.context:
